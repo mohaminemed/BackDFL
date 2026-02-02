@@ -174,6 +174,9 @@ class BenignClient(BaseClient):
       elif defense_type == "trim":
         from src.defenses.trim import TrimmedMeanServer
         self.agg_server = TrimmedMeanServer(self.model, self.testloader, self.device, config)
+      elif defense_type == "median":
+        from src.defenses.trim import MedianServer
+        self.agg_server = MedianServer(self.model, self.testloader, self.device, config)
       elif defense_type == "clip":
         from src.defenses.clip_dp import NormClippingServer
         self.agg_server = NormClippingServer(self.model, self.testloader, self.device, config)

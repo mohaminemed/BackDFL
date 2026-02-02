@@ -83,3 +83,54 @@ class TrimmedMeanServer(FedAvgAggregator):
 
         # Return a CPU-copy of the averaged params 
         return {k: v.cpu().clone() for k, v in averaged.items()}
+
+
+# MedianServer Implementation
+class MedianServer(FedAvgAggregator):
+    """
+    Implements coordinate-wise median aggregation as a subclass of FedAvgAggregator.
+    Uses the same data structure as TrimmedMeanServer (no client IDs needed).
+    """
+
+    def __init__(self, model: nn.Module, testloader: nn.Module = None, device: Optional[torch.device] = None, config: Optional[Dict] = None):
+        super().__init__(model, testloader, device)
+        self.config = config if config is not None else {}
+        print("Initialized MedianServer.")
+
+    def aggregate(self) -> Dict[str, torch.Tensor]:
+        """
+        Performs coordinate-wise median aggregation.
+        Returns the new aggregated parameters (state dict) on CPU.
+        """
+        num_updates = len(self.received_params)
+        if num_updates == 0:
+            print("Warning: No updates to aggregate.")
+            return self.get_params()
+
+        # Prepare aggregated dict
+        aggregated: Dict[str, torch.Tensor] = {}
+        first = self.received_params[0]
+        param_names = list(first.keys())
+
+        for name in param_names:
+            # Collect tensors from each client for this parameter
+            tensors = [client_state[name].detach().cpu() for client_state in self.received_params]
+
+            # Stack into shape (num_clients, *param_shape)
+            stacked = torch.stack(tensors, dim=0)  # dtype preserved
+
+            # Compute coordinate-wise median along dim=0
+            median_param = torch.median(stacked, dim=0).values
+
+            # Cast back to original dtype if necessary
+            aggregated[name] = median_param.type(first[name].dtype)
+
+        # Load the new aggregated parameters into the server model
+        self.set_params({k: v.to(self.device) for k, v in aggregated.items()})
+
+        # Clear buffers for next round
+        self.received_params = []
+        self.received_lens = []
+
+        # Return a CPU-copy of the aggregated params
+        return {k: v.cpu().clone() for k, v in aggregated.items()}
