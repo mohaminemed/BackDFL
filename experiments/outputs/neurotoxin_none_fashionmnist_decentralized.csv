@@ -1,0 +1,5 @@
+round,main_accuracy,min_accuracy,backdoor_accuracy,attack_active
+1,0.3779,0.2405,0.4030,1
+2,0.3878,0.2668,0.4108,1
+3,0.4632,0.3362,0.3904,1
+4,0.5933,0.5154,0.6155,1
