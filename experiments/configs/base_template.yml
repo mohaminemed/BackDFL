@@ -22,7 +22,7 @@ num_malicious: 3
 malicious_strategy: "random" # first 
 target_class: 7
 poisoning_rate: 0.25
-attack_start_round: 1
+attack_start_round: 25
 attack_end_round: 50 # oneshot for scaling start = end, throughout the training for Badnets -1 
 attack_mode: "continuous" #"sporadic"   
 
@@ -45,7 +45,7 @@ defense: "{defense}"
 
 # -- Defense-specific Parameters --
 clipping_norm: 4.0  #median, can be fiwed to 4.0 with gtsrb and mnist 
-dp_std_dev: 0.025
+dp_std_dev: 0.001
 
 deepsight_num_samples: 256
 deepsight_num_seeds: 3
