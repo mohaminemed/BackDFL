@@ -1,0 +1,56 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# ---- Virtual environments ----
+venv/
+.env/
+.venv/
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+
+# ---- PyTorch / ML ----
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# ---- Pickle / data artifacts ----
+*.pkl
+*.npz
+*.npy
+
+# ---- Datasets ----
+data/
+datasets/
+*/datasets/
+
+# ---- Experiment outputs ----
+runs/
+logs/
+results/
+outputs/
+checkpoints/
+
+# ---- Plots / figures ----
+*.pdf
+*.png
+*.svg
+
+# ---- IDE ----
+.vscode/
+.idea/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Temporary ----
+*.log
+*.tmp

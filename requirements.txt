@@ -1,0 +1,6 @@
+hdbscan==0.8.40
+numpy==2.3.2
+pytest==8.4.1
+PyYAML==6.0.2
+torch
+torchvision
