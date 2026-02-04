@@ -127,3 +127,21 @@ class NoiseDataset(torch.utils.data.Dataset):
         # Return just the noise tensor without a label
         noise = torch.rand(self.size)
         return noise
+
+
+class HARFlatNoiseDataset(torch.utils.data.Dataset):
+    """
+    Generates random feature vectors directly for HAR MLP (561 dims).
+    """
+
+    def __init__(self, input_dim=561, num_samples=1000):
+        self.input_dim = input_dim
+        self.num_samples = num_samples
+
+    def __len__(self):
+        return self.num_samples
+
+    def __getitem__(self, idx):
+        x = torch.randn(self.input_dim)
+        y = 0  # dummy label
+        return x, y

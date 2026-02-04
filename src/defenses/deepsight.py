@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 import copy
+import torch.nn.functional as F
+
 
 try:
     import hdbscan
@@ -14,7 +15,7 @@ except ImportError:
     hdbscan = None
 
 from ..fl.baseserver import FedAvgAggregator
-from .utils import NoiseDataset
+from .utils import HARFlatNoiseDataset, NoiseDataset
 from .const import NUM_CLASSES, IMG_SIZE
 
 
@@ -44,7 +45,6 @@ class DeepSightServer(FedAvgAggregator):
             return self.get_params()
         try:
             anomalous_clients_indices, euclidean_distances = self.detect_anomalies()
-            
             print(f"Deepsight detected {len(anomalous_clients_indices)} anomalous clients.")
             if anomalous_clients_indices:
                 print(f"Filtering out clients at indices: {anomalous_clients_indices}")
@@ -110,20 +110,29 @@ class DeepSightServer(FedAvgAggregator):
         last_layer_weight_name = param_names[-2]
         last_layer_bias_name = param_names[-1]
         num_classes = self.model.state_dict()[last_layer_weight_name].shape[0]
-
-        neups, TEs, euclidean_distances = self._calculate_neups(self.received_params, num_classes, last_layer_weight_name, last_layer_bias_name)
+        dataset_name = self.config.get('dataset', '').upper()
         
+        if dataset_name == "HAR": 
+            neups, TEs, euclidean_distances = self._calculate_neups_har(self.received_params, num_classes)
+        else:
+            neups, TEs, euclidean_distances = self._calculate_neups(self.received_params, num_classes, last_layer_weight_name, last_layer_bias_name)
         classification_boundary = np.median(TEs) if TEs else 0
         te_labels = [te <= classification_boundary * 0.5 for te in TEs]
+        if dataset_name == "HAR":
+            ddifs_per_seed = self._calculate_ddifs_har(self.received_params)
+        else:
+            ddifs_per_seed = self._calculate_ddifs(self.received_params)
 
-        ddifs_per_seed = self._calculate_ddifs(self.received_params)
         dist_cosine = self._calculate_cosine_distances(self.received_params, last_layer_bias_name)
-
+        
         neup_clusters = hdbscan.HDBSCAN().fit_predict(neups)
         neup_dists = self._dists_from_clust(neup_clusters, num_clients)
-
+        
+        
         cosine_clusters = hdbscan.HDBSCAN(metric='precomputed').fit_predict(dist_cosine)
         cosine_dists = self._dists_from_clust(cosine_clusters, num_clients)
+
+        print(f"DeepSight detection on dataset: {dataset_name}")
         
         ddif_dists_list = []
         for i in range(self.num_seeds):
@@ -133,7 +142,7 @@ class DeepSightServer(FedAvgAggregator):
         merged_ddif_dists = np.average(ddif_dists_list, axis=0)
         merged_distances = np.mean([merged_ddif_dists, neup_dists, cosine_dists], axis=0)
         final_clusters = hdbscan.HDBSCAN(metric='precomputed', min_cluster_size=2, allow_single_cluster=True).fit_predict(merged_distances)
-
+        
         benign_clients_set, malicious_clients_set = set(), set()
         unique_clusters = [l for l in np.unique(final_clusters) if l != -1]
         
@@ -146,10 +155,11 @@ class DeepSightServer(FedAvgAggregator):
                 malicious_clients_set.update(member_indices)
         
         outlier_indices = np.where(final_clusters == -1)[0]
+        
         for i in outlier_indices:
             if not te_labels[i]: benign_clients_set.add(i)
             else: malicious_clients_set.add(i)
-
+         
         return list(malicious_clients_set), euclidean_distances
     
     def _dists_from_clust(self, clusters: np.ndarray, N: int) -> np.ndarray:
@@ -193,15 +203,60 @@ class DeepSightServer(FedAvgAggregator):
             threshold = (1 / num_classes) * max_NEUP if num_classes > 0 else 0
             TEs.append(np.sum(NEUP_np >= threshold))
         return np.array(NEUPs), TEs, euclidean_distances
+    
+    def _calculate_neups_har(self, local_model_updates: List[Dict[str, torch.Tensor]], num_classes: int
+                     ) -> Tuple[np.ndarray, List[float], List[float]]:
+       """
+       NEUP computation for HAR_MLP.
+       Flatten weights and biases safely, works for all Linear layers.
+       """
+
+       NEUPs, TEs, euclidean_distances = [], [], []
+       global_params_cpu = self.get_params()  # dict of CPU tensors
+
+       for local_update in local_model_updates:  
+          flat_update = []
+          diffs_list = []
+
+          for name, param in local_update.items():
+            if 'weight' in name or 'bias' in name:
+                # --- Euclidean distance
+                diff = param.cpu() - global_params_cpu[name]
+                flat_update.append(diff.flatten())
+
+                # --- NEUP computation
+                global_param = global_params_cpu[name].to(param.device)
+                diff_tensor = torch.abs(param - global_param).flatten()
+                diffs_list.append(diff_tensor)
+
+          # --- Euclidean distance across all trainable params
+          euclidean_distances.append(torch.linalg.norm(torch.cat(flat_update)).item() if flat_update else 0.0)
+
+          # --- NEUP
+          diffs_concat = torch.cat(diffs_list)
+          NEUP = diffs_concat ** 2
+          NEUP /= (torch.sum(NEUP) + 1e-10)
+
+          NEUP_np = NEUP.cpu().numpy()
+          NEUPs.append(NEUP_np)
+
+          # --- Threshold exceedances
+          max_NEUP = np.max(NEUP_np)
+          threshold = (1 / num_classes) * max_NEUP if num_classes > 0 else 0
+          TEs.append(np.sum(NEUP_np >= threshold))
+
+       return np.array(NEUPs, dtype=object), TEs, euclidean_distances
 
     def _calculate_ddifs(self, local_model_updates: List[Dict[str, torch.Tensor]]) -> np.ndarray:
         dataset_name = self.config.get('dataset', '').upper()
         if not dataset_name or dataset_name not in NUM_CLASSES:
              raise ValueError("Dataset name must be provided in config for DeepSight")
+          
         num_classes = NUM_CLASSES[dataset_name]; img_height, img_width, num_channels = IMG_SIZE[dataset_name]
-
+           
         self.model.eval()
         local_model = copy.deepcopy(self.model)
+        local_model.eval()
         DDifs = []
         for seed in range(self.num_seeds):
             torch.manual_seed(seed)
@@ -212,17 +267,67 @@ class DeepSightServer(FedAvgAggregator):
                 local_model.load_state_dict(local_update)
                 local_model.eval()
                 DDif = torch.zeros(num_classes, device=self.device)
-                for inputs in loader:
+                for batch in loader:
+                    inputs = batch
                     inputs = inputs.to(self.device)
                     with torch.no_grad():
                         output_local = local_model(inputs)
                         output_global = self.model(inputs)
                     ratio = torch.div(output_local, output_global + 1e-30)
                     DDif.add_(ratio.sum(dim=0))
+                
                 DDif /= self.num_samples
                 seed_ddifs.append(DDif.cpu().numpy())
             DDifs.append(seed_ddifs)
         return np.array(DDifs)
+
+    def _calculate_ddifs_har(self, local_model_updates):
+       input_dim = 561
+       num_classes = NUM_CLASSES["HAR"]
+
+       self.model.eval()
+       local_model = copy.deepcopy(self.model)
+
+       DDifs = []
+
+       for seed in range(self.num_seeds):
+          torch.manual_seed(seed)
+
+          dataset = HARFlatNoiseDataset(
+            input_dim=input_dim,
+            num_samples=self.num_samples
+          )
+
+          loader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=self.deepsight_batch_size,
+            shuffle=False
+          )
+
+          seed_ddifs = []
+
+          for local_update in local_model_updates:
+             local_model.load_state_dict(local_update)
+             local_model.eval()
+
+             DDif = torch.zeros(num_classes, device=self.device)
+
+             for inputs, _ in loader:
+                inputs = inputs.to(self.device)
+
+                with torch.no_grad():
+                    out_local = F.softmax(local_model(inputs), dim=1)
+                    out_global = F.softmax(self.model(inputs), dim=1)
+
+                ratio = out_local / (out_global + 1e-30)
+                DDif.add_(ratio.sum(dim=0))
+
+             DDif /= self.num_samples
+             seed_ddifs.append(DDif.cpu().numpy())
+
+          DDifs.append(seed_ddifs)
+
+       return np.array(DDifs)
 
     def _calculate_cosine_distances(self, local_model_updates: List[Dict[str, torch.Tensor]], bias_name: str) -> np.ndarray:
         N = len(local_model_updates)

@@ -4,10 +4,10 @@ experiment_name: "{attack}_{defense}_{dataset}_{flow}"
 # --- FL Parameters ---
 flow: "{flow}"      # centralized, decentralized
 dataset: "{dataset}"
-num_clients: 10
+num_clients: 20
 num_parallel_clients: 10
-num_rounds: 4
-local_epochs: 1
+num_rounds: 50
+local_epochs: 5
 iid: "dirichlet" # iid
 dirichlet_alpha: 0.5
 batch_size: 32

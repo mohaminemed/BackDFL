@@ -17,18 +17,25 @@ NUM_CLASSES = {
     "SENTIMENT140": 2,
     "REDDIT": 50000,
     "GTSRB": 43,
+    "FASHIONMNIST": 10,
+    "HAR": 6
 }
 
 IMG_SIZE = {
     "CIFAR10": (32, 32, 3),
     "CIFAR100": (32, 32, 3),
     "MNIST": (28, 28, 1),
+    "FASHIONMNIST": (28, 28, 1),
     "EMNIST_BYCLASS": (28, 28, 1),
     "EMNIST_BALANCED": (28, 28, 1),
     "EMNIST_DIGITS": (28, 28, 1),
     "FEMNIST": (28, 28, 1),
     "TINYIMAGENET": (64, 64, 3),
     "GTSRB": (32, 32, 3)
+}
+
+SEQ_LENGTH = {
+    "HAR": (128, 9)  # 128 time steps, 9 channels
 }
 
 Metrics = Dict[str, float]
