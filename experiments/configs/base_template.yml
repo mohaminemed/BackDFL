@@ -7,7 +7,7 @@ dataset: "{dataset}"
 num_clients: 20
 num_parallel_clients: 10   # number of clients to run in parallel 
 num_rounds: 50
-local_epochs: 5   # local epochs for benign clients (5 FOR CIFAR10, GTSRB, HAR, FASHION, for for 1 for MNIST)
+local_epochs: 5   # local epochs for benign clients (5 FOR CIFAR10, GTSRB, HAR, and FASHION, 1 for MNIST)
 iid: "dirichlet" # iid
 dirichlet_alpha: 0.5
 batch_size: 32
