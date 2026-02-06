@@ -1,0 +1,109 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/mbouchiha/Bureau/BackDFL/experiments/run_parallel.py", line 55, in <module>
+    main(args.config)
+  File "/home/mbouchiha/Bureau/BackDFL/experiments/run_parallel.py", line 42, in main
+    env = prepare_environment(config)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbouchiha/Bureau/BackDFL/experiments/flows/flow_utils.py", line 318, in prepare_environment
+    client_loaders = adapter.get_client_loaders(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbouchiha/Bureau/BackDFL/src/datasets/adapter.py", line 52, in get_client_loaders
+    labels = self._extract_labels(self.dataset)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbouchiha/Bureau/BackDFL/src/datasets/adapter.py", line 131, in _extract_labels
+    _, y = ds[i]
+           ~~^^^
+  File "/home/mbouchiha/Bureau/BackDFL/venv/lib/python3.12/site-packages/torchvision/datasets/gtsrb.py", line 71, in __getitem__
+    sample = self.transform(sample)
+             ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbouchiha/Bureau/BackDFL/venv/lib/python3.12/site-packages/torchvision/transforms/transforms.py", line 95, in __call__
+    img = t(img)
+          ^^^^^^
+  File "/home/mbouchiha/Bureau/BackDFL/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbouchiha/Bureau/BackDFL/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbouchiha/Bureau/BackDFL/venv/lib/python3.12/site-packages/torchvision/transforms/transforms.py", line 1276, in forward
+    fn_idx, brightness_factor, contrast_factor, saturation_factor, hue_factor = self.get_params(
+                                                                                ^^^^^^^^^^^^^^^^
+  File "/home/mbouchiha/Bureau/BackDFL/venv/lib/python3.12/site-packages/torchvision/transforms/transforms.py", line 1259, in get_params
+    fn_idx = torch.randperm(4)
+             ^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+[INFO] Using device from YAML: cuda:0
+
+--- Configuration ---
+experiment_name: neurotoxin_none_gtsrb_decentralized
+flow: decentralized
+dataset: gtsrb
+num_clients: 20
+num_parallel_clients: 10
+num_rounds: 50
+local_epochs: 5
+iid: dirichlet
+dirichlet_alpha: 0.5
+batch_size: 32
+test_batch_size: 256
+lr: 0.01
+seed: 42
+mix_ratio: 0.5
+device: cuda:0
+attack: neurotoxin
+num_malicious: 3
+malicious_strategy: random
+target_class: 7
+poisoning_rate: 0.25
+attack_start_round: 25
+attack_end_round: 50
+attack_mode: continuous
+attack_type: biased_mix
+biased_mix_ratio: 0.9
+scale: 2.0
+stealth_after: 40
+stealth_ratio: 0.9
+scale_factor: 3.0
+malicious_epochs: 10
+mask_k_percent: 0.05
+trigger_epochs: 10
+trigger_lr: 0.01
+defense: none
+clipping_norm: 4.0
+dp_std_dev: 0.001
+deepsight_num_samples: 256
+deepsight_num_seeds: 3
+deepsight_batch_size: 64
+deepsight_tau: 0.5
+flame_lambda: 0.0001
+flame_eta: 1.0
+krum_f: 1
+krum_m: 3
+trim_b: 2
+balance_gamma: 0.5
+balance_kappa: 1.0
+balance_variant: exp_decay
+balance_weighted: False
+abalance_gamma: 0.1
+abalance_tau: 1.0
+ubar_rho: 0.45
+ubar_weighted: False
+ubar_fallback: best
+spp_fraction: 0.5
+spp_fixed_count: None
+spp_metric: cosine
+spp_combined_weights: None
+spp_threshold: 0.9
+spp_seed: 1234
+mmad_p: 0.5
+mmad_whiten: True
+mmad_min_clients: 4
+mmad_eps: 1e-6
+mmad_metrics: ['manhattan', 'euclidean', 'cosine']
+dfldual_alpha: 1.0
+dfldual_C1: 1e6
+dfldual_C2: 10
+topology: {'mode': 'single', 'single': {'name': 'random_regular', 'type': 'random_regular', 'n': 20, 'k': 7, 'seed': 42, 'params': {'p': 0.08, 'beta': 0.1, 'force_k_even': True, 'm': 3, 'use_networkx_random_regular': False, 'custom_path': None}, 'ensure_connected': True, 'max_additional_edge_attempts': 5000, 'save_graph_as': 'adj', 'compute_metrics': True, 'metrics_to_compute': ['algebraic_connectivity', 'diameter', 'avg_shortest_path_length', 'average_clustering'], 'spectral_gap': {'target': None, 'approx_search': False, 'param_bounds': [0.0, 1.0], 'samples': 30, 'tries_per_sample': 3, 'stop_if_within': 0.01}, 'instances': 1, 'annotate_instance_id': True}, 'sweep': [{'name': 'ws_beta_sweep', 'type': 'watts_strogatz', 'n': 10, 'k': 6, 'seed': 0, 'params': {'beta': None}, 'sweep_over': {'param': 'beta', 'values': [0.0, 0.01, 0.05, 0.1, 0.2, 0.4]}, 'instances_per_value': 5, 'compute_metrics': True}, {'name': 'er_p_sweep', 'type': 'erdos_renyi', 'n': 10, 'k': 6, 'seed': 1, 'params': {'p': None}, 'sweep_over': {'param': 'p', 'values': [0.02, 0.04, 0.06, 0.08, 0.12]}, 'instances_per_value': 10, 'compute_metrics': True}], 'defaults': {'ensure_connected': True, 'compute_metrics': True, 'instances': 1}}
+---------------------

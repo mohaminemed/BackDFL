@@ -1,9 +1,9 @@
 # --- Experiment Metadata ---
-experiment_name: "{attack}_{defense}_{dataset}_{flow}"
+experiment_name: "neurotoxin_none_gtsrb_decentralized"
 
 # --- FL Parameters ---
-flow: "{flow}"      # centralized, decentralized
-dataset: "{dataset}"
+flow: "decentralized"      # centralized, decentralized
+dataset: "gtsrb"
 num_clients: 20
 num_parallel_clients: 10   # number of clients to run in parallel 
 num_rounds: 50
@@ -18,7 +18,7 @@ mix_ratio: 0.5   # benign update mixing ratio
 device: "cuda:0" 
 
 # --- Training Attack Parameters ---
-attack: "{attack}"        # none, badnets, scaling, neurotoxin, a3fl, dba, iba
+attack: "neurotoxin"        # none, badnets, scaling, neurotoxin, a3fl, dba, iba
 num_malicious: 3
 malicious_strategy: "random" # first 
 target_class: 7  # 1 for HAR
@@ -42,7 +42,7 @@ trigger_epochs: 10     # for A3FL and IBA: number of epochs for trigger optimiza
 trigger_lr: 0.01   # for A3FL and IBA: learning rate for trigger optimization
 
 # --- Defense Parameters ---
-defense: "{defense}"
+defense: "none"
 
 # -- Defense-specific Parameters --
 clipping_norm: 4.0  #median, can be fixed to 4.0 with gtsrb and mnist 
