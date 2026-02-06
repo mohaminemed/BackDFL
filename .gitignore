@@ -3,7 +3,6 @@ __pycache__/
 
 # ---- Virtual environments ----
 venv/
-.env/
 .venv/
 # ---- Datasets ----
 data/
