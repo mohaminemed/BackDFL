@@ -42,9 +42,9 @@ All experiments are defined using a **unique** YAML file, removing the need for 
 - Benchmarks & models: 6 datasets (MNIST, FEMNIST, CIFAR-10, GTSRB, Fashion-MNIST, HAR) with standard CNN and ResNet architectures.  
 
 ### **Evaluation Metrics**
-- Accuracy  
-- Attack Success Rate (ASR)  
-- Durability  
+- Accuracy  (Min.ACC and Avg.ACC)
+- Attack Success Rate (Max.ASR)  
+- Durability (Final.ASR,  #rounds required for Max.ASR < threshold) 
 - Graph statistics (degree, spectral gap, connectivity)  
 - Logs and visualization for iterative experiments  
 
