@@ -14,7 +14,7 @@ class IBATrigger(BaseTrigger):
     This trigger uses a U-Net model to generate an input-specific perturbation.
     The generator is trained with a combined loss to be both effective and stealthy.
     """
-    def __init__(self, unet_model: UNet, trigger_epochs: int = 5, alpha: float = 0.2, lambda_noise: float = 0.01):
+    def __init__(self, unet_model: UNet, trigger_epochs: int = 10, alpha: float = 0.2, lambda_noise: float = 0.01):
         """
         Initializes the IBA generative trigger.
 

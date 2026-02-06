@@ -5,16 +5,17 @@ experiment_name: "{attack}_{defense}_{dataset}_{flow}"
 flow: "{flow}"      # centralized, decentralized
 dataset: "{dataset}"
 num_clients: 20
-num_parallel_clients: 10
+num_parallel_clients: 10   # number of clients to run in parallel 
 num_rounds: 50
-local_epochs: 5
+local_epochs: 5   # local epochs for benign clients (5 FOR CIFAR10, GTSRB, HAR, FASHION, for for 1 for MNIST)
 iid: "dirichlet" # iid
 dirichlet_alpha: 0.5
 batch_size: 32
 test_batch_size: 256
-lr: 0.01
+lr: 0.01         
 seed: 42
-mix_ratio: 0.5
+mix_ratio: 0.5   # benign update mixing ratio 
+device: "cuda:0" 
 
 # --- Training Attack Parameters ---
 attack: "{attack}"        # none, badnets, scaling, neurotoxin, a3fl, dba, iba
@@ -23,7 +24,7 @@ malicious_strategy: "random" # first
 target_class: 7
 poisoning_rate: 0.25
 attack_start_round: 25
-attack_end_round: 50 # oneshot for scaling start = end, throughout the training for Badnets -1 
+attack_end_round: 50 # oneshot for scaling start = end
 attack_mode: "continuous" #"sporadic"   
 
 # --- Aggregation Attack Parameters ---
@@ -34,11 +35,11 @@ stealth_after: 40
 stealth_ratio: 0.9
 
 # -- Attack-specific Parameters --
-scale_factor: 3.0
-malicious_epochs: 10
-mask_k_percent: 0.05
-trigger_epochs: 10
-trigger_lr: 0.01
+scale_factor: 3.0     # for scaling attack: static factor to scale malicious updates
+malicious_epochs: 10  # local epochs for malicious clients (if attack enabled)
+mask_k_percent: 0.05  # for neurotoxin: percentage of top-k parameters to mask (set to 0 to disable masking)
+trigger_epochs: 10     # for A3FL and IBA: number of epochs for trigger optimization
+trigger_lr: 0.01   # for A3FL and IBA: learning rate for trigger optimization
 
 # --- Defense Parameters ---
 defense: "{defense}"
@@ -147,7 +148,7 @@ topology:
     instances: 1                # number of independent graph instances to generate for this config
     annotate_instance_id: true  # add instance id to output filenames
 
-  # Sweep example (used when mode == "sweep")
+  # Sweep example (used when mode == "sweep") # Not implemented yet.
   sweep:
     # list of topology configs - runner should iterate these
     - name: "ws_beta_sweep"
@@ -182,5 +183,3 @@ topology:
     compute_metrics: true
     instances: 1
 
-
-device: "cuda:0" 
