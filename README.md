@@ -53,17 +53,25 @@ All experiments are defined using a **unique** YAML file, removing the need for 
 
 ## III. Getting Started
 
-### **1. Install Dependencies**
+### 1. Set Up Virtual Environment (Recommended)
+
+```bash
+python3 -m venv venv
+source venv/bin/activate   # On Linux/macOS
+# venv\Scripts\activate    # On Windows
+```
+
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Prepare Datasets
+### 3. Prepare Datasets
 
 Datasets are automatically downloaded on first use.  
 Alternatively, place them in the `data/` folder.
 
-### 3. Run an Experiment
+### 4. Run an Experiment
 
 First, set up the experiment by editing the `base_template.yml` file with your desired configuration (num_clients, num_rounds, num_malicious, topology, etc.).
 
@@ -76,7 +84,7 @@ Then, you can run a single experiment with:
 ./run_experiment.sh a3fl flame cifar10 decentralized
 ```
 
-### 4. Loop Over Experiments to Reproduce Results
+### 5. Loop Over Experiments to Reproduce Results
 
 To run multiple experiments in sequence and reproduce our benchmark results, use:
 
