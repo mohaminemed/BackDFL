@@ -92,7 +92,7 @@ The following centralized FL defenses have been adapted for decentralized aggreg
 
 **Reference:** Rieger et al., 2022
 
-DeepSight is a data-free clustering defense that analyzes client updates using multiple feature spaces, including:
+DeepSight is a clustering defense that analyzes client updates using multiple feature spaces, including:
 
 - NEUP
 - Decision Difference (DDif)
