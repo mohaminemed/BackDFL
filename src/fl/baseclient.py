@@ -278,6 +278,7 @@ class BenignClient(BaseClient):
             mix_ratio * own_state[k] +
             (1 - mix_ratio) * agg_weights[k]
           )
+      
        except Exception as e:
           print(f"[CLIENT {self.id}] Exception in mixing: {e}")
 

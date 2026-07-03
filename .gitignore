@@ -5,5 +5,14 @@ __pycache__/
 venv/
 .venv/
 # ---- Datasets ----
-data/
+data/*
+data
+data/har
+data/gtsb
+experiments/models/
+experiments/logs/
+experiments/outputs/
+experiments/outputs_v1/
+experiments/results_iid/    
 
+./gitignore

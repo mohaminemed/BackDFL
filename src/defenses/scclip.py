@@ -61,7 +61,7 @@ class SCCLIPServer(FedAvgAggregator):
         self.tau_scale = float(self.config.get('tau_scale', 1.0))
 
         # bucketing
-        self.bucketing = bool(self.config.get('bucketing', False))
+        self.bucketing = bool(self.config.get('bucketing', True))
         self.bucket_size = int(self.config.get('bucket_size', 3))
 
         # server learning / momentum
