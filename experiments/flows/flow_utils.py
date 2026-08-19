@@ -81,12 +81,7 @@ def average_state_dicts(state_dicts, weights=None):
         avg[k] = (acc / total_w).clone()
     return avg
 
-def recreate_asr_test_loader(testloader, trigger, target_class, batch_size, seed=42):
-    """
-    Build a poisoned evaluation dataloader using the updated trigger/pattern.
-    Works for both A3FL (pattern) and IBA (generator).
-    """
-    # --- Create poisoned evaluation dataset ---
+def recreate_asr_test_loader(testloader, trigger, target_class, batch_size, seed=42, num_workers=0, pin_memory=True):
     poisoned_dataset = BackdoorDataset(
         original_dataset=testloader.dataset,
         trigger_fn=trigger.apply,
@@ -95,12 +90,15 @@ def recreate_asr_test_loader(testloader, trigger, target_class, batch_size, seed
         seed=seed,
         poison_exclude_target=True
     )
-    # --- Create ASR loader ---
     return DataLoader(
         poisoned_dataset,
         batch_size=batch_size,
-        shuffle=True
+        shuffle=False,          # eval doesn't need shuffling — cheaper & reproducible
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=False  #  must stay False for correctness
     )
+
 
 def evaluate_model_accuracy(model, test_loader, device):
     """Evaluate classification accuracy (0..1)."""

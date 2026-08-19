@@ -13,6 +13,8 @@ experiments/models/
 experiments/logs/
 experiments/outputs/
 experiments/outputs_v1/
-experiments/results_iid/    
+experiments/results/  
+ploting/  
+plots/
 
 ./gitignore

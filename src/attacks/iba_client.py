@@ -76,6 +76,8 @@ class IBAClient(BenignClient):
             shuffle=True
             )
 
+            
+
             # Swap the loader and train
             original_loader = self.trainloader
             try:

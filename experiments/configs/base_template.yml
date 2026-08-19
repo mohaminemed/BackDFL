@@ -4,11 +4,12 @@ experiment_name: "{attack}_{defense}_{dataset}_{flow}"
 # --- FL Parameters ---
 flow: "{flow}"      # centralized, decentralized
 dataset: "{dataset}"
-num_clients: 100
-num_parallel_clients: 20
-num_rounds: 300
+num_clients: 20
+num_parallel_clients: 10 #for parrallel training, 1 for sequential
+client_selection_fraction: 1.0  #for centralized, num_clients for decentralized
+num_rounds: 70
 local_epochs: 5
-iid: "dirichlet" #"iid"  
+iid: "iid" #"dirichlet" 
 dirichlet_alpha: 0.5
 batch_size: 32
 test_batch_size: 256
@@ -16,19 +17,23 @@ lr: 0.01
 seed: 42
 mix_ratio: 0.5
 
+# --- Load a clean pre-trained model for testing ---
+pretrained_path: experiments/models/none_none_cifar10_decentralized_30_iid.pth
+start_round: 31
+
 # --- Training Attack Parameters ---
-attack: "{attack}"        # none, badnets, scaling, neurotoxin, a3fl, dba, iba
-num_malicious: 10
+attack: "{attack}"      #none, badnets, scaling, neurotoxin, a3fl, dba, iba
+num_malicious: 3
 malicious_strategy: "random" #"random" # first <=> clustered 
-target_class: 1   #1 for har 7 for others
+target_class: 7 # 1 for har 7 for others
 poisoning_rate: 0.25
-attack_start_round: 100
-attack_end_round: 250 # oneshot for scaling start = end, throughout the training for Badnets -1 
+attack_start_round: 31
+attack_end_round: 60 # oneshot for scaling start = end, throughout the training for Badnets -1 
 attack_mode: "continuous" #"sporadic"   #
 
 # --- Aggregation Attack Parameters ---
-attack_type: "biased_mix" #"scale_update" #
-biased_mix_ratio: 0.9
+attack_type: "biased_mix" #"align_neighbor"  #"scale_update" 
+biased_mix_ratio: 0.5
 scale: 2.0
 stealth_after: 40
 stealth_ratio: 0.9
@@ -52,10 +57,10 @@ deepsight_num_seeds: 3
 deepsight_batch_size: 64
 deepsight_tau: 0.5
 
-flame_lambda: 0.001   #0.001 hurts convergence, 0.0005 hurts on cifar10,  high ASR but better ACC on other DS
+flame_lambda: 0.00001   #0.001 hurts convergence, 0.0005 hurts on cifar10,  high ASR but better ACC on other DS
 flame_eta: 1.0
 
-krum_f: 1
+krum_f: 2
 krum_m: 3
 
 trim_b: 2
@@ -104,8 +109,8 @@ topology:
     type: "random_regular"         # supported: random | ring | line | cycle |
                                 # erdos_renyi | watts_strogatz | barabasi_albert |
                                 # random_regular | random_regular_nx | custom
-    n: 100                       # number of nodes (overrides top-level num_clients if provided)
-    k: 20                       # target degree (best-effort) - used by many generators
+    n: 20                       # number of nodes (overrides top-level num_clients if provided)
+    k: 7                      # target degree (best-effort) - used by many generators
     seed: 42
 
     # Graph-specific parameters (only relevant for particular types)
@@ -113,11 +118,11 @@ topology:
       # for erdos_renyi
       p: 0.24  #0.08
       # for watts_strogatz
-      beta: 0.3
+      beta: 0.1
       # if your WS implementation requires even k, set force_k_even true
       force_k_even: true
       # for barabasi_albert
-      m: 3
+      m: 2
       # for random_regular via networkx (explicitly use NX impl)
       use_networkx_random_regular: false
       # for "custom": path to adjacency file (json/yaml/gml); relative to experiment dir

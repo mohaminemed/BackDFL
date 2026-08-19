@@ -1,8 +1,9 @@
 #!/bin/bash
 
-ATTACKS=(neurotoxin) # BAs: neurotoxin badnets scaling iba dba // MPAs: krum, trim, gauss 
-DEFENSES=(spp flame weakdp dfldual)  # BDs & DFL methods:  clip ubar median trim weakdp scclip krum abalance balance spp mmad flame deepsight dfldual
-DATASETS=(har) #cifar10 mnist femnist gtsrb fashionmnist har 
+ATTACKS=(iba) # a3fl neurotoxin) # BAs: neurotoxin badnets scaling iba dba // MPAs: krum, trim, gauss  neurotoxin 
+DEFENSES=(abalance flame) #trim spp weakdp clip  deepsight mmad krum ubar scclip dfldual balance abalance trim spp clip weakdp flame abalance none
+DATASETS=(fashionmnist) #cifar10 mnist femnist har
+
 
 # Notes: 
 # HAR dataset must be downloaded manually and saved in data/har/

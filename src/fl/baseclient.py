@@ -210,6 +210,9 @@ class BenignClient(BaseClient):
       elif defense_type == "ubar":
         from src.defenses.ubar import UBARServer
         self.agg_server = UBARServer(self.model, self.testloader, self.device, config)  
+      elif defense_type == "saga":
+        from src.defenses.saga import SAGAServer
+        self.agg_server = SAGAServer(self.model, self.testloader, self.device, config)
       else:
         raise ValueError(f"Unknown defense type: {defense_type}")
 
@@ -260,7 +263,7 @@ class BenignClient(BaseClient):
           return self.model.state_dict()
 
        # --- Aggregate recieved updates ---
-       if defense_type in ['balance', 'abalance', "dfldual", "ubar"]:
+       if defense_type in ['balance', 'abalance', "dfldual", "ubar", "saga"]:
            agg_weights = self.agg_server.aggregate(current_round)  # returns a state_dict  
        else:    
            agg_weights = self.agg_server.aggregate()  # returns a state_dict

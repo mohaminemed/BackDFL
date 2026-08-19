@@ -65,6 +65,7 @@ class FlameServer(FedAvgAggregator):
             print("Warning: No updates to aggregate.")
             return self.get_params()
 
+
         malicious_indices, benign_indices, euclidean_distances = self.detect_anomalies()
         
         print(f"Flame detected {len(malicious_indices)} anomalous clients.")
@@ -138,6 +139,7 @@ class FlameServer(FedAvgAggregator):
         euclidean_distances = []
         global_params_cpu = self.get_params()
 
+
         for local_params in self.received_params:
             flat_update_diff = []
             for name, param in local_params.items():
@@ -155,6 +157,7 @@ class FlameServer(FedAvgAggregator):
         # --- MODIFICATION START: Revert to using 'cosine' metric as per the reference implementation ---
         client_weights_array = np.array(all_client_weights, dtype=np.float64)
 
+
         clusterer = hdbscan.HDBSCAN(
             metric="cosine", # Use built-in cosine distance
             algorithm= "generic",
@@ -163,6 +166,8 @@ class FlameServer(FedAvgAggregator):
         )
         labels = clusterer.fit_predict(client_weights_array)
         # --- MODIFICATION END ---
+
+        
 
         benign_indices = []
         if np.all(labels == -1) or len(np.unique(labels)) == 1:

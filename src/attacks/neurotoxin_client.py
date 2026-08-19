@@ -23,7 +23,7 @@ class NeurotoxinClient(BenignClient):
         attack_start_round: int,
         attack_end_round: int = -1,
         mask_k_percent: float = 0.05, # Mask the top 5% of parameters
-        scale_factor: float = 2.0,
+        scale_factor: float = 1.5,
         poison_fraction: float = 0.1,
         malicious_epochs: int = 1,
         **kwargs,

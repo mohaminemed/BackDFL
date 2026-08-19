@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 def double_conv(in_channels, out_channels):
     """
@@ -47,25 +46,7 @@ class UNet(nn.Module):
         # Tanh activation to ensure the output (perturbation) is in the range [-1, 1].
         self.tanh = nn.Tanh()
 
-        # Number of maxpool layers = 3 -> input H and W must be divisible by 2**3 = 8
-        # for the skip connections to line up exactly. We pad up to this multiple
-        # at the start of forward() and crop back down at the end, so any input
-        # size works without shape mismatches.
-        self.pool_factor = 8
-
-    def _pad_to_multiple(self, x):
-        """Pad H and W up to the nearest multiple of self.pool_factor."""
-        h, w = x.shape[-2:]
-        pad_h = (self.pool_factor - h % self.pool_factor) % self.pool_factor
-        pad_w = (self.pool_factor - w % self.pool_factor) % self.pool_factor
-        # F.pad expects (left, right, top, bottom) for the last two dims
-        x_padded = F.pad(x, (0, pad_w, 0, pad_h), mode='reflect')
-        return x_padded
-
     def forward(self, x):
-        orig_h, orig_w = x.shape[-2:]
-        x = self._pad_to_multiple(x)
-
         # --- Encoder ---
         conv1 = self.dconv_down1(x)
         x = self.maxpool(conv1)
@@ -75,30 +56,27 @@ class UNet(nn.Module):
 
         conv3 = self.dconv_down3(x)
         x = self.maxpool(conv3)
-
+        
         x = self.dconv_down4(x)
 
         # --- Decoder with Skip Connections ---
         x = self.upsample(x)
-        x = torch.cat([x, conv3], dim=1)  # Skip connection from conv3
+        x = torch.cat([x, conv3], dim=1) # Skip connection from conv3
 
         x = self.dconv_up3(x)
         x = self.upsample(x)
-        x = torch.cat([x, conv2], dim=1)  # Skip connection from conv2
+        x = torch.cat([x, conv2], dim=1) # Skip connection from conv2
 
         x = self.dconv_up2(x)
         x = self.upsample(x)
-        x = torch.cat([x, conv1], dim=1)  # Skip connection from conv1
-
+        x = torch.cat([x, conv1], dim=1) # Skip connection from conv1
+        
         x = self.dconv_up1(x)
-
+        
         out = self.conv_last(x)
-        out = self.tanh(out)
+        
+        return self.tanh(out)
 
-        # Crop back down to the original input size
-        out = out[..., :orig_h, :orig_w].contiguous()
-        return out
-  
 
 
 class FEMNISTAutoencoder(nn.Module):
