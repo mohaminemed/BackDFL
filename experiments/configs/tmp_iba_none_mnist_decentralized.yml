@@ -1,13 +1,13 @@
 # --- Experiment Metadata ---
-experiment_name: "{attack}_{defense}_{dataset}_{flow}"
+experiment_name: "iba_none_mnist_decentralized"
 
 # --- FL Parameters ---
-flow: "{flow}"      # centralized, decentralized
-dataset: "{dataset}"
+flow: "decentralized"      # centralized, decentralized
+dataset: "mnist"
 num_clients: 20
 num_parallel_clients: 10 #for parrallel training, 1 for sequential
 client_selection_fraction: 1.0  #for centralized, num_clients for decentralized
-num_rounds: 100
+num_rounds: 70
 local_epochs: 5
 iid: "iid" #"dirichlet" 
 dirichlet_alpha: 0.5
@@ -18,11 +18,11 @@ seed: 42
 mix_ratio: 0.5
 
 # --- Load a clean pre-trained model for testing ---
-#pretrained_path: experiments/models/none_none_cifar10_decentralized_30_iid.pth
-#start_round: 31
+pretrained_path: experiments/models/none_none_cifar10_decentralized_30_iid.pth
+start_round: 31
 
 # --- Training Attack Parameters ---
-attack: "{attack}"      #none, badnets, scaling, neurotoxin, a3fl, dba, iba
+attack: "iba"      #none, badnets, scaling, neurotoxin, a3fl, dba, iba
 num_malicious: 3
 malicious_strategy: "random" #"random" # first <=> clustered 
 target_class: 7 # 1 for har 7 for others
@@ -46,7 +46,7 @@ trigger_epochs: 10
 trigger_lr: 0.005
 
 # --- Defense Parameters ---
-defense: "{defense}"
+defense: "none"
 
 # -- Defense-specific Parameters --
 clipping_norm: 4.0 #40.0 # 4.0 with gtsrb and mnist
