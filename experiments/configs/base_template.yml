@@ -49,7 +49,7 @@ trigger_lr: 0.005
 defense: "{defense}"
 
 # -- Defense-specific Parameters --
-clipping_norm: 4.0 #40.0 # 4.0 with gtsrb and mnist
+clipping_norm: 4.0 # then dynamic median
 dp_std_dev: 0.01
 
 deepsight_num_samples: 256
