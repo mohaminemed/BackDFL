@@ -4,6 +4,7 @@ __pycache__/
 # ---- Virtual environments ----
 venv/
 .venv/
+.vscode/*
 # ---- Datasets ----
 data/*
 data
