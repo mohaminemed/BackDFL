@@ -7,19 +7,22 @@ dataset: "{dataset}"
 num_clients: 20
 num_parallel_clients: 10 #for parrallel training, 1 for sequential
 client_selection_fraction: 1.0  #for centralized, num_clients for decentralized
-num_rounds: 100
+num_rounds: 50
 local_epochs: 5
-iid: "iid" #"dirichlet" 
+iid: "dirichlet" 
 dirichlet_alpha: 0.5
 batch_size: 32
 test_batch_size: 256
 lr: 0.01
 seed: 42
 mix_ratio: 0.5
+net_churn_rho: 0.0
 
 # --- Load a clean pre-trained model for testing ---
 #pretrained_path: experiments/models/none_none_cifar10_decentralized_30_iid.pth
 #start_round: 31
+#save_model: true
+#save_model_path: experiments/models/{attack}_{defense}_{dataset}_{flow}_25.pth
 
 # --- Training Attack Parameters ---
 attack: "{attack}"      #none, badnets, scaling, neurotoxin, a3fl, dba, iba
@@ -27,8 +30,8 @@ num_malicious: 3
 malicious_strategy: "random" #"random" # first <=> clustered 
 target_class: 7 # 1 for har 7 for others
 poisoning_rate: 0.25
-attack_start_round: 31
-attack_end_round: 60 # oneshot for scaling start = end, throughout the training for Badnets -1 
+attack_start_round: 25
+attack_end_round: 30 # oneshot for scaling start = end, throughout the training for Badnets -1 
 attack_mode: "continuous" #"sporadic"   #
 
 # --- Aggregation Attack Parameters ---

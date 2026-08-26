@@ -1,3 +1,4 @@
+import random
 import time
 import torch
 import os
@@ -198,13 +199,41 @@ def run_decentralized_flow(env, config, logger):
            updates_map = {cid: (weights, num_samples, metrics, updated_trigger_state) for (cid, weights, num_samples, metrics, updated_trigger_state) in results}
               
         train_time = time.time() - t_train_start
-        
+
+        # NET CHURN
+        net_churn_rho = config.get("net_churn_rho", 0.0)
+
+        # Sample active clients for this round
+        client_ids = [client.id for client in clients if client.__class__.__name__ == 'BenignClient']
+        mal_client_ids = [client.id for client in clients if client.__class__.__name__ != 'BenignClient']
+     
+        if net_churn_rho > 0:
+           rng = random.Random(config.get("seed", 42) + current_round)
+           n_churn = int(len(client_ids) * net_churn_rho)
+           churned_ids = set(rng.sample(client_ids, n_churn))
+        else:
+           churned_ids = set()
+
+        active_client_ids = set(client_ids) - churned_ids
+
+        print(
+          f"[Round {current_round}] Active clients: "
+          f"{len(active_client_ids)}/{len(client_ids)} "
+          f"({len(active_client_ids) / len(client_ids):.1%})"
+        )
         
         # 2. AGGREGATION
         t_agg_start = time.time()
         for client in clients:
+
+            # Churned clients do not perform aggregation this round
+            if client.id in churned_ids:
+               continue 
+            
             neighs = neighbors.get(client.id, [])
-            collected = [updates_map[nid] for nid in neighs if nid in updates_map]
+            collected = [updates_map[nid] for nid in neighs if nid in updates_map and (nid in active_client_ids or nid in mal_client_ids)]
+
+
             if len(collected) == 0:
                 continue
 
@@ -269,7 +298,7 @@ def run_decentralized_flow(env, config, logger):
 
             if client.__class__.__name__ == 'BenignClient':
                 main_accuracies.append(acc)
-                if client.id == 0 and current_round in [1, 25, 50]:
+                if client.id == 0 and current_round in [40, 50]:
                     save_clean_model(path=f"experiments/models/{config['experiment_name']}_{current_round}.pth", model=client.model)
 
             if backdoor_loader and current_round >= config.get('attack_start_round', 100):

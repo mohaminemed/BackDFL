@@ -38,7 +38,7 @@ class NeurotoxinClient(BenignClient):
         self.scale_factor = scale_factor
         self.poison_fraction = poison_fraction
         self.malicious_epochs = malicious_epochs
-        self.attack_mode = "sporadic" # "continuous"
+        self.attack_mode = "continuous" #"sporadic" #
         self.sporadic_k = 2
         self.sporadic_p = 2
 

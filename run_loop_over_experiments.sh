@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ATTACKS=(iba) # a3fl neurotoxin) # BAs: neurotoxin badnets scaling iba dba // MPAs: krum, trim, gauss  neurotoxin 
-DEFENSES=(none abalance flame) #trim spp weakdp clip  deepsight mmad krum ubar scclip dfldual balance abalance trim spp clip weakdp flame abalance none
+ATTACKS=(badnet) # a3fl neurotoxin) # BAs: neurotoxin badnets scaling iba dba // MPAs: krum, trim, gauss  neurotoxin 
+DEFENSES=(none weakdp clip deepsight mmad krum ubar scclip dfldual balance abalance trim spp flame)
 DATASETS=(mnist) #cifar10 mnist femnist har
 
 

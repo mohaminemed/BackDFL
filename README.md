@@ -2,8 +2,7 @@
 
 BackDFL is a **modular, extensible, and configuration-driven** framework for benchmarking **backdoor attacks** and **defenses** in **Decentralized Federated Learning (DFL)**.
 
-It integrates state-of-the-art attacks and defenses, configurable communication topologies, as well as reproducible FL/DFL pipelines.  
-The framework is implemented in **Python + PyTorch** and released under the **MIT License**.
+It integrates state-of-the-art attacks and defenses, configurable communication topologies, as well as reproducible FL/DFL pipelines. The framework is implemented in **Python + PyTorch**.
 
 ---
 
@@ -98,3 +97,20 @@ All outputs and logs will be saved in their respective folders: `experiments/out
 ### Contributing
 
 We welcome contributions! Please open an issue or pull request.
+
+
+## 📖  Paper
+
+If you find **BackDFL** useful in your research, please consider citing the paper:
+
+```bibtex
+@misc{bouchiha2026backdflunifiedbenchmarkbackdoor,
+      title={BackDFL: A Unified Benchmark For Backdoor Attacks and Defenses In Decentralized Federated Learning}, 
+      author={Mouhamed Amine Bouchiha and Gregory Blanc and Yufei Han},
+      year={2026},
+      eprint={2608.21137},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2608.21137}, 
+}
+```
