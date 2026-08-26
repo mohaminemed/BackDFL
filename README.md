@@ -28,7 +28,7 @@ BackDFL offers:
 Each component—datasets, models, attacks, defenses, flows—is isolated and easily extendable.
 
 ### **Configuration-Driven Execution**
-All experiments are defined using a **unique** YAML file, removing the need for duplicate boilerplate code.
+All experiments are defined using a **unique** YAML file without duplicate boilerplate code.
 
 ### **FL + DFL Support**
 - Standard centralized FL  
