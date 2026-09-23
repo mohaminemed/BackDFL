@@ -12,10 +12,9 @@ from src.defenses.trim import TrimmedMeanServer
 from src.defenses.balance import BalanceServer  
 from src.defenses.spp import SPPServer
 from src.defenses.mmad import MultiMetricsServer
-import os
 
 
-from .flow_utils import evaluate_model_accuracy, evaluate_asr, set_seed, save_clean_model, load_clean_model
+from .flow_utils import evaluate_model_accuracy, evaluate_asr
 
 def _client_worker(args):
     """
@@ -136,14 +135,13 @@ def run_centralized_flow(env, config, logger):
         main_metrics = server.evaluate()
         main_acc = main_metrics['metrics']['main_accuracy'] if 'metrics' in main_metrics else evaluate_model_accuracy(server.model, test_loader, device)
         asr = evaluate_asr(server.model, backdoor_loader, device) if current_round >= config.get('attack_start_round', 0) else 0.0
-        target_class = config.get('target_class', None)
       
 
         round_time = time.time() - round_start
         attack_flag = 1 if (config.get('attack', 'none') != 'none' and config.get('num_malicious', 0) > 0 and config.get('attack_start_round', 0) <= current_round <= config.get('attack_end_round', 0x7fffffff)) else 0
         print(f"Round {current_round}: Main Acc = {main_acc:.4f}, Backdoor ASR = {asr:.4f}, Attack Active={attack_flag}, took {round_time:.2f}s")
 
-        #logger.log_round(current_round, main_acc, main_acc, asr, attack_flag)
+
         logger.log_round(current_round, main_acc, main_acc, asr, attack_flag)
                 
 

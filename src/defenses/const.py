@@ -18,8 +18,16 @@ NUM_CLASSES = {
     "REDDIT": 50000,
     "GTSRB": 43,
     "FASHIONMNIST": 10,
-    "HAR": 6
+    "HAR": 6,
+    "NSLKDD": 5,
+    "UNSW_NB15": 10
 }
+
+# Tabular (non-image) datasets: feature vectors instead of images. Only
+# feature-space backdoor attacks (badnets, neurotoxin, scaling, tdfed) are
+# supported for these, since image-specific attacks (a3fl, iba, dba, patch)
+# assume spatial/pixel structure that tabular data does not have.
+TABULAR_DATASETS = {"HAR", "NSLKDD", "UNSW_NB15", "NBAIOT"}
 
 IMG_SIZE = {
     "CIFAR10": (32, 32, 3),

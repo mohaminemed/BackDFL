@@ -11,15 +11,22 @@ from src.datasets.mnist import MNISTAdapter
 from src.datasets.femnist import FEMNISTAdapter
 from src.datasets.fashionmnist import FashionMNISTAdapter
 from src.datasets.cifar10 import CIFAR10Adapter
+from src.datasets.cifar100 import CIFAR100Adapter
 from src.datasets.gtsrb import GTSRBAdapter
 from src.datasets.har import HARAdapter
+from src.datasets.nslkdd import NSLKDDAdapter
+from src.datasets.unsw_nb15 import UNSWNB15Adapter
+from src.datasets.n_baiot import NBaIoTAdapter
 
 
-from src.models.mnist_cnn import LeNet5, EMNIST_CNN, MNISTNet, Fashion_CNN
+from src.models.mnist_cnn import LeNet5, MNISTNet, Fashion_CNN
 from src.models.tiny_resnet18 import ResNet18_TinyImageNet
 from src.models.cifar_resnet18 import CifarNetGN
 from src.models.gtsrb_cnn import GTSRB_CNN
 from src.models.har_mlp import HAR_MLP
+from src.models.nslkdd_mlp import NSLKDD_MLP
+from src.models.unsw_mlp import UNSW_MLP
+from src.models.nbaiot_mlp import NBaIoT_MLP
 
 
 # backdoor test loader for ASR evaluation
@@ -33,13 +40,21 @@ from src.attacks.neurotoxin_client import NeurotoxinClient
 from src.attacks.a3fl_client import A3FLClient
 from src.attacks.dba_client import DBAClient
 from src.attacks.iba_client import IBAClient
+from src.attacks.omp_client import OMPClient
+
+
+
 from src.attacks.selectors.randomselector import RandomSelector
 from src.attacks.triggers.patch import PatchTrigger
 from src.attacks.triggers.a3fl import A3FLTrigger
 from src.attacks.triggers.distributed import DBATrigger
 from src.attacks.triggers.iba import IBATrigger
 
+
 from src.attacks.triggers.har_trigger import HARTrigger
+from src.attacks.triggers.nslkdd_trigger import NSLKDDTrigger
+from src.attacks.triggers.unsw_trigger import UNSWTrigger
+from src.attacks.triggers.nbaiot_trigger import NBaIoTTrigger
 
 
 
@@ -81,6 +96,41 @@ def average_state_dicts(state_dicts, weights=None):
         avg[k] = (acc / total_w).clone()
     return avg
 
+def recreate_asr_test_loader_old(testloader, trigger, target_class, batch_size, seed=42):
+    """
+    Build a poisoned evaluation dataloader using the updated trigger/pattern.
+    Works for both A3FL (pattern) and IBA (generator).
+    """
+    # --- Create poisoned evaluation dataset ---
+    poisoned_dataset = BackdoorDataset(
+        original_dataset=testloader.dataset,
+        trigger_fn=trigger.apply,
+        target_label=target_class,
+        poison_fraction=1.0,
+        seed=seed,
+        poison_exclude_target=True
+    )
+    # --- Create ASR loader ---
+    return DataLoader(
+        poisoned_dataset,
+        batch_size=batch_size,
+        shuffle=True
+    )
+
+def evaluate_model_accuracy(model, test_loader, device):
+    """Evaluate classification accuracy (0..1)."""
+    model.eval()
+    correct, total = 0, 0
+    with torch.no_grad():
+        for inputs, targets in test_loader:
+            inputs, targets = inputs.to(device), targets.to(device)
+            outputs = model(inputs)
+            _, preds = torch.max(outputs.data, 1)
+            correct += (preds == targets).sum().item()
+            total += targets.size(0)
+    return (correct / total) if total > 0 else 0.0
+
+
 def recreate_asr_test_loader(testloader, trigger, target_class, batch_size, seed=42, num_workers=0, pin_memory=True):
     poisoned_dataset = BackdoorDataset(
         original_dataset=testloader.dataset,
@@ -98,21 +148,6 @@ def recreate_asr_test_loader(testloader, trigger, target_class, batch_size, seed
         pin_memory=pin_memory,
         persistent_workers=False  #  must stay False for correctness
     )
-
-
-def evaluate_model_accuracy(model, test_loader, device):
-    """Evaluate classification accuracy (0..1)."""
-    model.eval()
-    correct, total = 0, 0
-    with torch.no_grad():
-        for inputs, targets in test_loader:
-            inputs, targets = inputs.to(device), targets.to(device)
-            outputs = model(inputs)
-            _, preds = torch.max(outputs.data, 1)
-            correct += (preds == targets).sum().item()
-            total += targets.size(0)
-    return (correct / total) if total > 0 else 0.0
-
 
 def evaluate_asr(model, backdoor_loader: DataLoader, device: torch.device):
     if backdoor_loader is None: return 0.0
@@ -153,9 +188,14 @@ def _make_adapter_and_model(config):
         image_size = (28, 28)
     elif ds == 'cifar10':
         adapter = CIFAR10Adapter(root="data", download=True)
-        model_cls = lambda: CifarNetGN()
+        model_cls = lambda: CifarNetGN(num_classes=10)
         in_channels = 3
         image_size = (32, 32)
+    elif ds == 'cifar100':
+        adapter = CIFAR100Adapter(root="data", download=True)
+        model_cls = lambda: CifarNetGN(num_classes=100)
+        in_channels = 3
+        image_size = (32, 32)    
     elif ds == 'gtsrb':
         adapter = GTSRBAdapter(root="data")
         model_cls = lambda: GTSRB_CNN(num_classes=43)
@@ -164,6 +204,21 @@ def _make_adapter_and_model(config):
     elif ds == 'har':
         adapter = HARAdapter(root="data", download=False)
         model_cls = lambda: HAR_MLP()
+        in_channels = None
+        image_size = None
+    elif ds == 'nslkdd':
+        adapter = NSLKDDAdapter(root="data", download=False)
+        model_cls = lambda: NSLKDD_MLP(input_dim=adapter.dataset.X.shape[1])
+        in_channels = None
+        image_size = None
+    elif ds == 'unsw_nb15':
+        adapter = UNSWNB15Adapter(root="data", download=False)
+        model_cls = lambda: UNSW_MLP(input_dim=adapter.dataset.X.shape[1])
+        in_channels = None
+        image_size = None
+    elif ds == 'nbaiot':
+        adapter = NBaIoTAdapter(root="data", download=False)
+        model_cls = lambda: NBaIoT_MLP(input_dim=adapter.dataset.X.shape[1])
         in_channels = None
         image_size = None
 
@@ -271,7 +326,7 @@ def build_clients(client_loaders: Dict[int, object],
                                    attack_start_round=config.get('attack_start_round', 0),
                                    attack_end_round=config.get('attack_end_round', -1),
                                    poison_fraction=config.get('poisoning_rate', 0.1),
-                                   malicious_epochs=config.get('malicious_epochs', 10))
+                                   malicious_epochs=config.get('malicious_epochs', 10))  
                                    
             elif attack_type == 'dba':
                 # If trigger is a list indexed by malicious-order, map to the position in malicious_ids
@@ -291,12 +346,21 @@ def build_clients(client_loaders: Dict[int, object],
             elif attack_type == 'trim':
                 client = TrimAttackClient(**base_kwargs, scale = config.get('trim_scale', 5.0))     
             elif attack_type == 'gauss':
-                client = GaussianAttackClient(**base_kwargs, variance = config.get('gauss_variance', 200))   
-                                  
+                client = GaussianAttackClient(**base_kwargs, variance = config.get('gauss_variance', 200))  
+            elif attack_type == 'omp':
+                client = OMPClient(**base_kwargs, attack_start_round=config.get('attack_start_round', 0),
+                                   attack_end_round=config.get('attack_end_round', -1),
+                                   gamma_init=config.get('omp_gamma_init', 1.5),
+                                   tau=config.get('omp_tau', 1e-3),
+                                   perturbation=config.get('omp_perturbation', 'sign'),
+                                   malicious_epochs=config.get('malicious_epochs', 5))
+                      
             else:
                 client = BenignClient(**base_kwargs)
-        else:
+        
+        else: 
             client = BenignClient(**base_kwargs)
+
         clients.append(client)
     return clients
 
@@ -358,11 +422,29 @@ def prepare_environment(config):
     trigger = None
     attack = config.get('attack')
 
-    # HAR dataset and Badnet attack
-    if  config.get('dataset') == "har":
-        if attack in ['badnets', 'neurotoxin', 'scaling'] :
+    # Tabular datasets only support feature-space attacks: badnets, neurotoxin,
+    # scaling, tdfed. Image-specific attacks (a3fl, iba, dba, plain patch) rely
+    # on spatial/pixel structure that these datasets don't have.
+    if config.get('dataset') == "har":
+        if attack in ['badnets', 'neurotoxin', 'scaling', 'tdfed']:
              trigger = HARTrigger( trigger_features=[0, 10, 20],
                                       trigger_value=3.0)  
+
+    elif config.get('dataset') == "nslkdd":
+        if attack in ['badnets', 'neurotoxin', 'scaling', 'tdfed']:
+            trigger = NSLKDDTrigger(trigger_features=(0, 4, 5, 22, 23),
+                                     trigger_value=3.0,
+                                     num_numeric=NSLKDDAdapter.num_numeric)
+
+    elif config.get('dataset') == "unsw_nb15":
+        if attack in ['badnets', 'neurotoxin', 'scaling', 'tdfed']:
+            trigger = UNSWTrigger(trigger_features=(0, 1, 2, 3),
+                                   trigger_value=3.0,
+                                   num_numeric=adapter.num_numeric)
+
+    elif config.get('dataset') == "nbaiot":
+        if attack in ['badnets', 'neurotoxin', 'scaling', 'tdfed']:
+            trigger = NBaIoTTrigger(trigger_features=(0, 1, 2), trigger_value=3.0)
 
     elif config.get('attack', 'none') != 'none':
         trigger_pos = (image_size[0] - 4, image_size[1] - 4)
@@ -383,11 +465,11 @@ def prepare_environment(config):
             trigger = IBATrigger(unet_model=unet_generator, 
                                  trigger_epochs=config.get('trigger_epochs', 5))
         elif attack == 'dba':
-            shard_locations = [(0, 0), (2, 0), (0, 2), (2, 2)]
+            shard_locations = [(0, 0), (4, 0), (0, 4), (4, 4)]
             trigger = [
                 DBATrigger(client_id=i, shard_locations=shard_locations,
                            global_position=(image_size[0]-5, image_size[1]-5),
-                           patch_size=(2, 2), color=(1.0,)*in_channels)
+                           patch_size=(4, 4), color=(1.0,)*in_channels)
                 for i in range(config.get('num_malicious', 0))
             ]
          
@@ -406,7 +488,7 @@ def prepare_environment(config):
     server_model = model_cls().to(device)
 
     backdoor_loader_for_eval = None
-    if config.get('attack', 'none') != 'none':
+    if config.get('attack', 'none') not in ['none', 'krum', 'trim', 'gauss', 'omp']:
         eval_trigger_for_dba = PatchTrigger(
             position=(image_size[0]-5, image_size[1]-5),
             size=(4, 4), color=(1.0,)*in_channels

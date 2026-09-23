@@ -3,10 +3,11 @@ import time
 import torch
 import os
 import multiprocessing as mp
+import pickle
 
 
 from .topology import create_topology
-from .flow_utils import evaluate_model_accuracy, evaluate_asr, recreate_asr_test_loader, save_clean_model, load_clean_model
+from .flow_utils import evaluate_model_accuracy, evaluate_asr, recreate_asr_test_loader, load_clean_model
 
 
 def _get_prev_param_or_zero(prev_map, client_id, key, ref_tensor, device):
@@ -139,6 +140,7 @@ def run_decentralized_flow(env, config, logger):
     prev_model_params_per_client = {c.id: None for c in clients}
     start_round = int(config.get('start_round', 1))
     total_rounds = int(config.get('num_rounds', 1))
+    
 
     initial_pretrained_state = None
     pretrained_path = config.get('load_model_path', config.get('pretrained_path'))    
@@ -150,6 +152,19 @@ def run_decentralized_flow(env, config, logger):
             initial_pretrained_state = {k: v.cpu().clone() for k, v in clients[0].model.state_dict().items()}
         except Exception:
             print(f"ERROR: Could not load pretrained model. Proceeding with random init.")
+
+    # Storage for Statistics-space analysis
+    statistic_analysis_path = config.get('statistic_analysis_path', None)
+    statistic_analysis_round = int(config.get('statistic_analysis_round', total_rounds))
+
+    if statistic_analysis_path:
+      os.makedirs(os.path.dirname(statistic_analysis_path) or '.', exist_ok=True)
+
+      statistic_analysis_data = {
+        'client_updates': {},
+        'malicious_ids': [],
+        'global_model': None,
+    }
 
     backdoor_loader = env.get('backdoor_loader')
     asr_attacker_id = None  # cache key: which client's trigger this loader is bound to
@@ -260,6 +275,71 @@ def run_decentralized_flow(env, config, logger):
                         client.trigger.pattern = ts
         agg_time = time.time() - t_agg_start
 
+        # ============================================================
+        # SAVE MODEL SNAPSHOT FOR STATISTICS ANALYSIS
+        # ============================================================
+        if statistic_analysis_path and current_round == statistic_analysis_round:
+
+            print(
+                f"[Statistics Analysis] Saving model snapshot "
+                f"for round {current_round} -> {statistic_analysis_path}"
+            )
+
+            # Save each client's current model parameters
+            client_updates = {}
+
+            for client in clients:
+                try:
+                    state_dict = client.model.state_dict()
+
+                    client_updates[client.id] = {
+                        k: v.detach().cpu().clone()
+                        for k, v in state_dict.items()
+                    }
+
+                except Exception as e:
+                    print(
+                        f"[Statistics Analysis] Could not save client "
+                        f"{client.id}: {e}"
+                    )
+
+            # Identify malicious clients
+            malicious_ids = [
+                client.id
+                for client in clients
+                if client.__class__.__name__ != 'BenignClient'
+            ]
+
+            # Use the initial/pretrained model as the global reference.
+            if initial_pretrained_state is not None:
+                global_model = {
+                    k: v.detach().cpu().clone()
+                    for k, v in initial_pretrained_state.items()
+                }
+            else:
+                # If no pretrained model exists, use the first client's
+                # model as the reference.
+                reference_client = clients[0]
+
+                global_model = {
+                    k: v.detach().cpu().clone()
+                    for k, v in reference_client.model.state_dict().items()
+                }
+
+            statistic_analysis_data = {
+                'client_updates': client_updates,
+                'malicious_ids': malicious_ids,
+                'global_model': global_model,
+            }
+
+            with open(statistic_analysis_path, 'wb') as f:
+                pickle.dump(statistic_analysis_data, f)
+
+            print(
+                f"[Statistics Analysis] Saved {len(client_updates)} clients "
+                f"and {len(malicious_ids)} malicious clients."
+            )
+
 
         # 3. DYNAMIC TRIGGER & EVALUATION
         t_eval_start = time.time()
@@ -298,8 +378,6 @@ def run_decentralized_flow(env, config, logger):
 
             if client.__class__.__name__ == 'BenignClient':
                 main_accuracies.append(acc)
-                if client.id == 0 and current_round in [40, 50]:
-                    save_clean_model(path=f"experiments/models/{config['experiment_name']}_{current_round}.pth", model=client.model)
 
             if backdoor_loader and current_round >= config.get('attack_start_round', 100):
                 asr_val = evaluate_asr(client.model, backdoor_loader, device)
@@ -323,14 +401,15 @@ def run_decentralized_flow(env, config, logger):
         print(f"Round {current_round}: Avg ACC = {main_acc:.4f}, Min ACC = {min_acc:.4f}, Max ASR = {max_asr:.4f}, Attack: {attack_flag_int}")
         logger.log_round(current_round, main_acc, min_acc, max_asr, attack_flag_int)
 
-    if config.get("save_model", False):
-        save_path = config.get("save_model_path", "experiments/pretrained_models/default.pt")
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        
-        # 'clients' is a list. Find the first BenignClient safely, 
-        # fallback to the very first client if no BenignClient exists.
-        first_benign = next((c for c in clients if c.__class__.__name__ == 'BenignClient'), clients[0])
-        
-        # Save the state dictionary using PyTorch
-        torch.save(first_benign.model.state_dict(), save_path)
-        print(f"\n💾 [SAVED] Pretrained model saved successfully to: {save_path}")
+        if config.get("save_model", True) and current_round in config.get("save_model_rounds", [total_rounds]):
+            save_path = config.get("save_model_path", "experiments/pretrained_models/default.pth")
+            save_path_round = save_path.replace(".pth", f"_round{current_round}.pth")
+            os.makedirs(os.path.dirname(save_path_round), exist_ok=True)
+
+            # 'clients' is a list. Find the first BenignClient safely,
+            # fallback to the very first client if no BenignClient exists.
+            first_benign = next((c for c in clients if c.__class__.__name__ == 'BenignClient'), clients[0])
+
+            # Save the state dictionary using PyTorch
+            torch.save(first_benign.model.state_dict(), save_path_round)
+            print(f"\n💾 [SAVED] Pretrained model saved successfully to: {save_path_round}")

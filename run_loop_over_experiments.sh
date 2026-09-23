@@ -1,8 +1,10 @@
 #!/bin/bash
 
-ATTACKS=(iba) #BAs: neurotoxin badnets scaling iba dba // MPAs: krum, trim, gauss 
-DEFENSES=(none) #BDs: weakdp clip deepsight mmad krum ubar scclip dfldual balance abalance trim spp flame
-DATASETS=(mnist) #cifar10 cifar100 mnist femnist har gtsrb
+ATTACKS=(neurotoxin) #BAs: neurotoxin badnets scaling iba dba // MPAs: krum, trim, gauss 
+DEFENSES=(none)   #BDs: weakdp clip deepsight mmad krum ubar scclip dfldual balance abalance trim spp flame
+DATASETS=(har) #cifar10 cifar100 mnist femnist har gtsrb fashionmnist nslkdd unsw_nb15 nbaiot
+
+#krum flame mmad spp deepsight clip weakdp 
 
 
 # Notes: 
@@ -13,6 +15,7 @@ DATASETS=(mnist) #cifar10 cifar100 mnist femnist har gtsrb
 # unzip human+activity+recognition+using+smartphones.zip
 # unzip UCI\ HAR\ Dataset.zip
 # cp -r UCI\ HAR\ Dataset/*  har
+# Repeat the same process for the other datasets if needed
 
 
 for atk in "${ATTACKS[@]}"; do

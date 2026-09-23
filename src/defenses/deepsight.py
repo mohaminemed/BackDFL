@@ -16,7 +16,7 @@ except ImportError:
 
 from ..fl.baseserver import FedAvgAggregator
 from .utils import HARFlatNoiseDataset, NoiseDataset
-from .const import NUM_CLASSES, IMG_SIZE
+from .const import NUM_CLASSES, IMG_SIZE, TABULAR_DATASETS
 
 
 class DeepSightServer(FedAvgAggregator):
@@ -111,29 +111,24 @@ class DeepSightServer(FedAvgAggregator):
         last_layer_bias_name = param_names[-1]
         num_classes = self.model.state_dict()[last_layer_weight_name].shape[0]
         dataset_name = self.config.get('dataset', '').upper()
-        
-        if dataset_name == "HAR": 
+        if dataset_name in TABULAR_DATASETS: 
             neups, TEs, euclidean_distances = self._calculate_neups_har(self.received_params, num_classes)
         else:
             neups, TEs, euclidean_distances = self._calculate_neups(self.received_params, num_classes, last_layer_weight_name, last_layer_bias_name)
         classification_boundary = np.median(TEs) if TEs else 0
         te_labels = [te <= classification_boundary * 0.5 for te in TEs]
-        if dataset_name == "HAR":
-            ddifs_per_seed = self._calculate_ddifs_har(self.received_params)
+        if dataset_name in TABULAR_DATASETS:
+            ddifs_per_seed = self._calculate_ddifs_har(self.received_params, num_classes)
         else:
             ddifs_per_seed = self._calculate_ddifs(self.received_params)
 
         dist_cosine = self._calculate_cosine_distances(self.received_params, last_layer_bias_name)
-        
         neup_clusters = hdbscan.HDBSCAN().fit_predict(neups)
         neup_dists = self._dists_from_clust(neup_clusters, num_clients)
         
         
         cosine_clusters = hdbscan.HDBSCAN(metric='precomputed').fit_predict(dist_cosine)
         cosine_dists = self._dists_from_clust(cosine_clusters, num_clients)
-
-        print(f"DeepSight detection on dataset: {dataset_name}")
-        
         ddif_dists_list = []
         for i in range(self.num_seeds):
             ddif_clusters = hdbscan.HDBSCAN().fit_predict(ddifs_per_seed[i])
@@ -155,7 +150,6 @@ class DeepSightServer(FedAvgAggregator):
                 malicious_clients_set.update(member_indices)
         
         outlier_indices = np.where(final_clusters == -1)[0]
-        
         for i in outlier_indices:
             if not te_labels[i]: benign_clients_set.add(i)
             else: malicious_clients_set.add(i)
@@ -281,9 +275,9 @@ class DeepSightServer(FedAvgAggregator):
             DDifs.append(seed_ddifs)
         return np.array(DDifs)
 
-    def _calculate_ddifs_har(self, local_model_updates):
-       input_dim = 561
-       num_classes = NUM_CLASSES["HAR"]
+    def _calculate_ddifs_har(self, local_model_updates, num_classes):
+       # Tabular MLPs (HAR/NSLKDD/UNSW_NB15) all expose their input width via fc1.
+       input_dim = self.model.fc1.in_features
 
        self.model.eval()
        local_model = copy.deepcopy(self.model)

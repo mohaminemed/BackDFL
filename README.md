@@ -30,7 +30,7 @@ Each component—datasets, models, attacks, defenses, flows—is isolated and ea
 ### **Configuration-Driven Execution**
 All experiments are defined using a **unique** YAML file without duplicate boilerplate code.
 
-### **FL + DFL Support**
+### **CFL + DFL Support**
 - Standard centralized FL  
 - Fully decentralized FL (peer-to-peer) with controllable graph topologies  
 
@@ -38,7 +38,7 @@ All experiments are defined using a **unique** YAML file without duplicate boile
 - Targeted backdoor attacks: BadNets, DBA, Model Replacement, A3FL, IBA…  
 - Untargeted poisoning attacks: Label Flipping, Feature Attack, Gauss Attack, Krum, Trim…  
 - Comprehensive defense suite: 15 defenses, including BALANCE, SCCLIP, Krum, WeakDP, FLAME, DeepSight, and other FL and DFL-specific robust methods  
-- Benchmarks & models: 8 datasets (MNIST, FEMNIST, CIFAR-10,CIFAR-100, TinyImageNet, GTSRB, Fashion-MNIST, HAR) with standard model architectures.  
+- Benchmarks & models: 11 datasets (MNIST, FEMNIST, CIFAR-10, CIFAR-100, TinyImageNet, GTSRB, Fashion-MNIST, HAR, NSLKDD, UNSW_nb15, NBAIoT) with standard model architectures.  
 
 ### **Evaluation Metrics**
 - Accuracy  (Min.ACC and Avg.ACC)

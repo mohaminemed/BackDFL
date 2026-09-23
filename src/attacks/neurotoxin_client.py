@@ -9,7 +9,7 @@ from .triggers.base import BaseTrigger
 
 class NeurotoxinClient(BenignClient):
     """
-    A corrected re-implementation of the Neurotoxin attack, aligned with the
+    An implementation of the Neurotoxin attack, aligned with the
     paper's formal algorithm.
 
     This version uses the aggregated global update from the previous round to
@@ -334,6 +334,27 @@ class NeurotoxinClient(BenignClient):
                 malicious_delta = attacker_state_cpu[k].to(torch.float32) - prev_k.to(torch.float32)
                 agg_cpu[k] = honest_state_cpu[k] + neurotoxin_eta * malicious_delta
             print(f"[Attacker {self.get_id()}] NEUROTOXIN: crafted update using prev_global_params (eta={neurotoxin_eta}).")
+
+      elif attack_type == "align_neighbor":
+        
+        target_idx = int(config.get("target_neighbor_idx", 0))
+        beta = float(config.get("alignment_strength", 0.8))
+
+        # pick one neighbor
+        w_t, n_t, _, _ = neighbor_updates[target_idx]
+
+        neighbor_state_cpu = {k: v.detach().cpu() for k, v in w_t.items()}
+
+        # align attacker toward that neighbor (or vice versa)
+        agg_cpu = {}
+        for k in attacker_state_cpu.keys():
+          if k in neighbor_state_cpu:
+            # interpolation: attacker → neighbor direction
+            agg_cpu[k] = (1 - beta) * attacker_state_cpu[k] + beta * neighbor_state_cpu[k]
+          else:
+            agg_cpu[k] = attacker_state_cpu[k]
+
+        print(f"[Attacker {self.get_id()}] ALIGN_NEIGHBOR: target={target_idx}, beta={beta}.")  
 
       else:
         raise ValueError(f"Unknown attack_type: {attack_type}")

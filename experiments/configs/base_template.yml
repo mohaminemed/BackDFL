@@ -5,11 +5,11 @@ experiment_name: "{attack}_{defense}_{dataset}_{flow}"
 flow: "{flow}"      # centralized, decentralized
 dataset: "{dataset}"
 num_clients: 20
-num_parallel_clients: 10 #for parrallel training, 1 for sequential
+num_parallel_clients: 10  #for parallel training, set to 1 for serial training
 client_selection_fraction: 1.0  #for centralized, num_clients for decentralized
-num_rounds: 50
+num_rounds: 100
 local_epochs: 5
-iid: "dirichlet" 
+iid: "dirichlet"  #
 dirichlet_alpha: 0.5
 batch_size: 32
 test_batch_size: 256
@@ -17,22 +17,21 @@ lr: 0.01
 seed: 42
 mix_ratio: 0.5
 net_churn_rho: 0.0
-
-# --- Load a clean pre-trained model for testing ---
-#pretrained_path: experiments/models/none_none_cifar10_decentralized_30_iid.pth
+#pretrained_path: experiments/models/none_none_gtsrb_decentralized_30_non_iid.pth
 #start_round: 31
-#save_model: true
-#save_model_path: experiments/models/{attack}_{defense}_{dataset}_{flow}_25.pth
+save_model: False
+save_model_path: "experiments/models/{attack}_{defense}_{dataset}_{flow}.pth"
+save_model_rounds: [30, 60, 100]
 
 # --- Training Attack Parameters ---
-attack: "{attack}"      #none, badnets, scaling, neurotoxin, a3fl, dba, iba
+attack: "{attack}"        # none, badnets, scaling, neurotoxin, a3fl, dba, iba
 num_malicious: 3
-malicious_strategy: "random" #"random" # first <=> clustered 
-target_class: 7 # 1 for har 7 for others
+malicious_strategy: "random" # first <=> clustered 
+target_class: 1 # 1 for har and cyber datasets, 7 for CV datasets
 poisoning_rate: 0.25
-attack_start_round: 25
-attack_end_round: 30 # oneshot for scaling start = end, throughout the training for Badnets -1 
-attack_mode: "continuous" #"sporadic"   #
+attack_start_round: 30
+attack_end_round: 60 # oneshot for scaling start = end, throughout the training for Badnets -1 
+attack_mode: "continuous" #"sporadic"   
 
 # --- Aggregation Attack Parameters ---
 attack_type: "biased_mix" #"align_neighbor"  #"scale_update" 
@@ -42,17 +41,22 @@ stealth_after: 40
 stealth_ratio: 0.9
 
 # -- Attack-specific Parameters --
-scale_factor: 3.0
+scale_factor: 2.0
 malicious_epochs: 10
 mask_k_percent: 0.05
 trigger_epochs: 10
 trigger_lr: 0.005
 
+omp_gamma_init: 2.0
+omp_tau: 1e-3
+omp_perturbation: "sign"
+
+
 # --- Defense Parameters ---
 defense: "{defense}"
 
 # -- Defense-specific Parameters --
-clipping_norm: 4.0 # then dynamic median
+clipping_norm: 4.0 #40.0 # 4.0 with gtsrb and mnist
 dp_std_dev: 0.01
 
 deepsight_num_samples: 256
@@ -113,7 +117,7 @@ topology:
                                 # erdos_renyi | watts_strogatz | barabasi_albert |
                                 # random_regular | random_regular_nx | custom
     n: 20                       # number of nodes (overrides top-level num_clients if provided)
-    k: 7                      # target degree (best-effort) - used by many generators
+    k: 7                    # target degree (best-effort) - used by many generators
     seed: 42
 
     # Graph-specific parameters (only relevant for particular types)
@@ -192,4 +196,4 @@ topology:
     instances: 1
 
 
-device: "cuda:0"
+device: "cuda"
