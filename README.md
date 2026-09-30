@@ -1,116 +1,376 @@
-# BackDFL: Modular Framework for Backdoor Attacks and Defenses in (Decentralized) Federated Learning
+# BackDFL: A Modular Framework for Backdoor Attacks and Defenses in Decentralized Federated Learning
 
-BackDFL is a **modular, extensible, and configuration-driven** framework for benchmarking **backdoor attacks** and **defenses** in **Decentralized Federated Learning (DFL)**.
-
-It integrates state-of-the-art attacks and defenses, configurable communication topologies, as well as reproducible FL/DFL pipelines. The framework is implemented in **Python + PyTorch**.
-
----
-
-##  I. Overview
-
-BackDFL offers:
-
-- A **layered architecture** covering configuration, data/model, experiment flows, attacks/defenses, and evaluation.
-- **Parallel and decentralized training** with graph-based communication.
-- Rich libraries of attacks, defenses, and model architectures.
-- Full YAML-based configuration for reproducible experiments.
-- Automatic logging, metrics, and graph visualization.
 
 <p align="center">
-  <img src="BackDFL.png" width="70%">
+  <b>BackDFL</b> is a modular, extensible, and configuration-driven framework for systematically evaluating backdoor attacks and defenses in Federated Learning (FL) and Decentralized Federated Learning (DFL).
+</p>
+
+<p align="center">
+  <a href="https://arxiv.org/abs/2608.21137">📄 Paper</a> •
+  <a href="#getting-started">🚀 Getting Started</a> •
+  <a href="#attacks-and-defenses">🛡️ Attacks & Defenses</a> •
+  <a href="#license">⚖️ License</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/mohaminemed/BackDFL">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License">
+  </a>
 </p>
 
 ---
 
-## II. Key Features
+## 1. Overview
 
-### **Modular Design**
-Each component—datasets, models, attacks, defenses, flows—is isolated and easily extendable.
+BackDFL provides a unified experimental framework for benchmarking backdoor attacks and defenses under configurable FL and DFL settings.
 
-### **Configuration-Driven Execution**
-All experiments are defined using a **unique** YAML file without duplicate boilerplate code.
+The framework combines:
 
-### **CFL + DFL Support**
-- Standard centralized FL  
-- Fully decentralized FL (peer-to-peer) with controllable graph topologies  
+* **Modular architecture** spanning configuration, data/model handling, experiment flows, attacks, defenses, and evaluation.
+* **Centralized and decentralized training**, including peer-to-peer communication over configurable graph topologies.
+* **A broad collection of backdoor attacks and robust aggregation/defense mechanisms**.
+* **YAML-based experiment configuration** for reproducible and systematic evaluations.
+* **Automated logging and evaluation** of task performance, attack effectiveness, robustness, and graph properties.
+* **Reproducible experiment pipelines** for running individual configurations or complete benchmark suites.
 
-### **Extensive Attack & Defense Support**
-- Targeted backdoor attacks: BadNets, DBA, Model Replacement, A3FL, IBA…  
-- Untargeted poisoning attacks: Label Flipping, Feature Attack, Gauss Attack, Krum, Trim…  
-- Comprehensive defense suite: 15 defenses, including BALANCE, SCCLIP, Krum, WeakDP, FLAME, DeepSight, and other FL and DFL-specific robust methods  
-- Benchmarks & models: 11 datasets (MNIST, FEMNIST, CIFAR-10, CIFAR-100, TinyImageNet, GTSRB, Fashion-MNIST, HAR, NSLKDD, UNSW_nb15, NBAIoT) with standard model architectures.  
+The framework is implemented in **Python** using **PyTorch**.
 
-### **Evaluation Metrics**
-- Accuracy  (Min.ACC and Avg.ACC)
-- Attack Success Rate (Max.ASR)  
-- Durability (Final.ASR,  #rounds required for Max.ASR < threshold) 
-- Graph statistics (degree, spectral gap, connectivity)  
-- Logs and visualization for iterative experiments  
+<p align="center">
+  <img src="BackDFL.png" width="60%">
+</p>
 
 ---
 
+## 2. Key Features
 
-## III. Getting Started
+### Modular Design
 
-### 1. Set Up Virtual Environment (Recommended)
+BackDFL separates the main components of an FL/DFL experiment:
+
+```text
+Configuration
+    │
+    ├── Dataset / Partitioning
+    ├── Model
+    ├── Training Flow
+    ├── Attack
+    ├── Defense
+    ├── Communication Topology
+    └── Evaluation
+```
+
+Each component can be independently configured or extended without modifying the rest of the experimental pipeline.
+
+### Configuration-Driven Execution
+
+Experiments are specified through YAML configuration files, including parameters such as:
+
+* number of clients;
+* number of malicious clients;
+* number of communication rounds;
+* dataset and model;
+* attack and attack window;
+* defense;
+* data heterogeneity;
+* communication topology;
+* optimizer and training parameters.
+
+This allows the same experimental pipeline to be reused across different attack, defense, dataset, and topology combinations.
+
+### Centralized and Decentralized FL
+
+BackDFL supports:
+
+* **Centralized Federated Learning (CFL)**;
+* **Decentralized Federated Learning (DFL)**;
+* peer-to-peer client communication;
+* configurable graph topologies;
+* topology-aware evaluation.
+
+### Reproducible Evaluation
+
+The framework records experiment outputs and logs, making it possible to reproduce individual configurations or execute predefined benchmark suites.
+
+---
+
+# 3. Attacks and Defenses
+
+## Backdoor Attacks
+
+BackDFL implements several representative backdoor strategies covering different attack mechanisms, including static triggers, distributed triggers, optimized triggers, generative triggers, gradient manipulation, and model replacement.
+
+| Attack            | Trigger / Mechanism                                  | Update Manipulation                                | Activation          |
+| ----------------- | ---------------------------------------------------- | -------------------------------------------------- | ------------------- |
+| **BadNets**       | Fixed input-space trigger                            | Naive poisoned training                            | Configurable window |
+| **DBA**           | Distributed trigger components                       | Naive poisoned training                            | Configurable window |
+| **A3FL**          | Optimized trigger using PGD and a hardened surrogate | Naive poisoned training                            | Configurable window |
+| **IBA**           | Learned input-conditioned trigger generator          | Naive poisoned training                            | Configurable window |
+| **Neurotoxin**    | Fixed trigger + parameter-importance masking         | Suppresses gradients on high-importance parameters | Configurable window |
+| **Model Scaling** | Fixed trigger                                        | Scaled model update / model replacement            | One-shot            |
+
+The attacks can be configured with parameters such as poisoning ratio, target class, malicious training epochs, attack window, trigger configuration, and update scaling.
+
+### Attack Dimensions
+
+The implemented attacks cover four main dimensions:
+
+| Dimension               | Examples                                                     |
+| ----------------------- | ------------------------------------------------------------ |
+| **Trigger design**      | Fixed, distributed, optimized, generated                     |
+| **Optimization scope**  | None, global model, hardened surrogate, parameter importance |
+| **Update manipulation** | Naive training, gradient masking, update scaling             |
+| **Activation**          | Persistent attack window or one-shot attack                  |
+
+---
+
+## Defenses
+
+The evaluated defenses are organized into two families.
+
+### DFL Byzantine-Robust Aggregation
+
+These methods are designed for decentralized peer-to-peer aggregation:
+
+| Defense      | Main Signal                               | Update Treatment                      | Aggregation              |
+| ------------ | ----------------------------------------- | ------------------------------------- | ------------------------ |
+| **UBAR**     | Distance + local loss                     | Shortlisting and loss-based filtering | Mean                     |
+| **SCCLIP**   | Update-delta norm                         | Random bucketing + clipping           | Mean of clipped deltas   |
+| **BALANCE**  | $\ell_2$ distance                         | Hard accept/reject                    | Mean of accepted updates |
+| **ABALANCE** | $\ell_2$ distance + temporal statistics   | Adaptive accept/reject                | Mean of accepted updates |
+| **DFL-Dual** | Model-space + data-space distances        | Two-stage clustering                  | Selected contributors    |
+| **SENTINEL** | Cosine similarity + local validation loss | Filtering, weighting, normalization   | Weighted aggregation     |
+
+### FL Backdoor Defenses Adapted to DFL
+
+These defenses originate from centralized FL and are instantiated locally by each DFL client acting as an aggregator:
+
+| Defense                     | Detection Signal                     | Update Treatment              | Aggregation          |
+| --------------------------- | ------------------------------------ | ----------------------------- | -------------------- |
+| **DeepSight**               | NEUP, DDif, cosine similarity        | HDBSCAN + median clipping     | FedAvg               |
+| **FLAME**                   | Last-layer cosine similarity         | HDBSCAN + clipping + noise    | Weighted FedAvg      |
+| **SPP**                     | Partial-parameter similarity         | Hard filtering                | FedAvg               |
+| **MMAD**                    | $\ell_1$, $\ell_2$, cosine distances | Score-based selection         | FedAvg               |
+| **Norm Clipping / Weak-DP** | Update norm                          | Clipping + optional noise     | Weighted FedAvg      |
+| **Multi-Krum**              | Pairwise update distances            | Select lowest-scoring updates | Mean                 |
+| **Trimmed-Mean**            | Coordinate-wise values               | Coordinate-wise trimming      | Coordinate-wise mean |
+
+The benchmark therefore covers defenses based on:
+
+* distance;
+* similarity;
+* local loss;
+* clustering;
+* update clipping;
+* adaptive thresholds;
+* weighting;
+* coordinate-wise robust aggregation.
+
+---
+
+# 4. Evaluation Metrics
+
+BackDFL reports multiple complementary metrics to characterize both utility and attack effectiveness.
+
+### Task Performance
+
+* **Min.ACC** — minimum test accuracy observed during the experiment.
+* **Avg.ACC** — average test accuracy over the evaluated rounds.
+
+### Backdoor Effectiveness
+
+* **Max.ASR** — maximum attack success rate observed during the attack/evaluation period.
+* **Final.ASR** — attack success rate at the end of the experiment.
+* **Durability** — number of rounds required for ASR to fall below a specified threshold.
+
+### DFL Topology
+
+For decentralized experiments, BackDFL can additionally record graph-level properties such as:
+
+* node degree;
+* graph connectivity;
+* spectral gap;
+* communication topology.
+
+### Experiment Artifacts
+
+Experiments automatically generate:
+
+* configuration files;
+* logs;
+* metrics;
+* serialized results;
+* plots and graph visualizations.
+
+---
+
+# 5. Benchmark Configurations
+
+The benchmark covers multiple datasets and model architectures with standardized training settings.
+
+| Dataset        | Model       | Classes | Target $y_T$             | Input               | Optimizer | $\eta$ | Batch | Epochs | Rounds |
+| -------------- | ----------- | ------: | ------------------------ | ------------------- | --------- | -----: | ----: | -----: | -----: |
+| `MNIST`        | SimpleCNN   |      10 | 7 — digit *7*            | $1\times28\times28$ | SGD       |   0.01 |    32 |      1 |     50 |
+| `FashionMNIST` | FashionCNN  |      10 | 7 — sneaker              | $1\times28\times28$ | SGD       |   0.01 |    32 |      5 |     50 |
+| `FEMNIST`      | LeNet-5     |      62 | 7 — digit *7*            | $1\times28\times28$ | SGD       |   0.01 |    32 |     10 |    100 |
+| `CIFAR-10`     | ResNet18-GN |      10 | 7 — horse                | $3\times32\times32$ | SGD       |   0.01 |    32 |      5 |    100 |
+| `CIFAR-100`    | ResNet18-GN |     100 | 7 — beetle               | $3\times32\times32$ | SGD       |   0.01 |    32 |      5 |   600* |
+| `GTSRB`        | GTSRB-CNN   |      43 | 7 — 100 km/h speed limit | $3\times32\times32$ | SGD       |   0.01 |    32 |      5 | 50–100 |
+| `HAR`          | HAR-MLP     |       6 | 1 — walking upstairs     | 561                 | SGD       |   0.01 |    32 |      5 | 50–300 |
+| `NSL-KDD`      | NSLKDD-MLP  |       5 | 0 — normal traffic       | 122                 | SGD       |   0.01 |    32 |      5 |    200 |
+| `UNSW-NB15`    | UNSW-MLP    |      10 | 0 — normal traffic       | 199                 | SGD       |   0.01 |    32 |      5 |    100 |
+
+* 500 benign rounds followed by 100 rounds from the benign checkpoint with a scheduled attack.
+
+### Target-Class Selection
+
+The target classes are fixed per dataset to ensure consistent and reproducible evaluation across attacks.
+
+For datasets with semantic class labels, the selected targets correspond to concrete, well-defined classes rather than being chosen dynamically during evaluation. In particular:
+
+* **GTSRB — class 7 (`100 km/h speed limit`)**: this is a visually well-defined traffic-sign category with a clear semantic interpretation. Using a specific speed-limit sign provides a reproducible targeted misclassification objective while remaining representative of targeted attacks against safety-relevant visual recognition tasks.
+* **NSL-KDD and UNSW-NB15 — class 0 (`normal traffic`)**: targeting the benign/normal class evaluates whether a backdoor can cause malicious or anomalous traffic to be classified as legitimate traffic. This is particularly relevant for intrusion-detection settings because the resulting attack represents a **false-negative classification scenario** rather than simply confusing one attack category with another.
+* **HAR — `walking upstairs`**: the selected activity provides a concrete target label in a multi-class human-activity recognition task.
+* **CIFAR-10 / CIFAR-100 / MNIST / FashionMNIST**: targets are fixed class indices to provide a common and reproducible targeted-backdoor setting across experiments.
+
+The target class is therefore treated as an **experimental parameter**, not as a property that inherently makes one dataset or class more vulnerable than another.
+
+---
+
+# 6. Getting Started
+
+## 6.1 Set Up a Virtual Environment
+
+We recommend using a dedicated Python virtual environment.
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate   # On Linux/macOS
-# venv\Scripts\activate    # On Windows
+source venv/bin/activate
+
+# Windows:
+# venv\Scripts\activate
 ```
 
-### 2. Install Dependencies
+## 6.2 Install Dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Prepare Datasets
+## 6.3 Prepare the Datasets
 
-Datasets are automatically downloaded on first use.  
-Alternatively, place them in the `data/` folder.
+Datasets are automatically downloaded when supported by the corresponding dataset loader.
 
-### 4. Run an Experiment
+Alternatively, datasets can be placed in:
 
-First, set up the experiment by editing the `base_template.yml` file with your desired configuration (num_clients, num_rounds, num_malicious, topology, etc.).
+```text
+data/
+```
 
-Then, you can run a single experiment with:
+---
+
+# 7. Running an Experiment
+
+Configure the experiment through:
+
+```text
+base_template.yml
+```
+
+Typical parameters include:
+
+```yaml
+num_clients:
+num_rounds:
+num_malicious:
+dataset:
+model:
+attack:
+defense:
+flow:
+topology:
+```
+
+A single experiment can then be launched with:
 
 ```bash
 ./run_experiment.sh "$ATTACK" "$DEFENSE" "$DATASET" "$FLOW"
+```
 
-#Example
+For example:
+
+```bash
 ./run_experiment.sh a3fl flame cifar10 decentralized
 ```
 
-### 5. Loop Over Experiments to Reproduce Results
+The same execution interface can be used to combine different attacks, defenses, datasets, and FL/DFL flows.
 
-To run multiple experiments in sequence and reproduce our benchmark results, use:
+---
+
+# 8. Reproducing Benchmark Experiments
+
+To execute the predefined benchmark configurations:
 
 ```bash
 ./loop_over_experiments.sh
 ```
 
-This script iterates over predefined configurations, creates temporary YAML files for each experiment, and executes them automatically.
-All outputs and logs will be saved in their respective folders: `experiments/outputs/` and `experiments/logs/`
+The script iterates over the predefined configurations, generates the corresponding temporary YAML files, and executes the experiments automatically.
 
-### Contributing
+Results are stored under:
 
-We welcome contributions! Please open an issue or pull request.
+```text
+experiments/
+├── outputs/
+└── logs/
+```
 
+This makes it possible to reproduce complete experiment suites without manually modifying individual configuration files.
 
-## 📖  Paper
+---
 
-If you find **BackDFL** useful in your research, please consider citing the paper:
+# 9. Repository Structure
+
+A simplified view of the repository is:
+
+```text
+BackDFL/
+├── attacks/              # Backdoor and poisoning attacks
+├── defenses/             # Aggregation and defense mechanisms
+├── datasets/             # Dataset loading and partitioning
+├── models/               # Model architectures
+├── flows/                # CFL / DFL training flows
+├── configs/              # YAML configurations
+├── experiments/          # Experiment outputs and logs
+├── scripts/              # Experiment automation
+├── base_template.yml     # Base experiment configuration
+├── run_experiment.sh     # Run one experiment
+├── loop_over_experiments.sh
+├── requirements.txt
+└── BackDFL.png
+```
+
+---
+
+# 10. 📄 Paper
+
+If you use **BackDFL** in your research, please cite:
 
 ```bibtex
 @misc{bouchiha2026backdflunifiedbenchmarkbackdoor,
-      title={BackDFL: A Unified Benchmark For Backdoor Attacks and Defenses In Decentralized Federated Learning}, 
+      title={BackDFL: A Unified Benchmark for Backdoor Attacks and Defenses in Decentralized Federated Learning},
       author={Mouhamed Amine Bouchiha and Gregory Blanc and Yufei Han},
       year={2026},
       eprint={2608.21137},
       archivePrefix={arXiv},
       primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2608.21137}, 
+      url={https://arxiv.org/abs/2608.21137}
 }
 ```
+
+---
+
+# 12. Contributing
+
+Contributions are welcome.
+
+If you would like to report a bug, suggest an improvement, add an attack or defense, or contribute a new dataset/model integration, please open an **issue** or submit a **pull request**.
