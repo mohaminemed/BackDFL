@@ -8,12 +8,13 @@
 
 <p align="center">
   <a href="https://arxiv.org/abs/2608.21137">
-    <img src="https://img.shields.io/badge/📄_Paper-arXiv-B31B1B?style=for-the-badge&logo=arxiv" alt="Paper">
+    <img src="https://img.shields.io/badge/📄_Paper-arXiv-B31B1B?style=for-the-badge" alt="Paper">
   </a>
   <a href="https://github.com/mohaminemed/BackDFL">
-    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="MIT License">
   </a>
 </p>
+
 
 
 
