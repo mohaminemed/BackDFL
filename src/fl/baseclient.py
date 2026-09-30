@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
+
 class BaseClient(ABC):
     @abstractmethod
     def get_id(self) -> int:
@@ -165,7 +166,7 @@ class BenignClient(BaseClient):
 
       config = config or {}
 
-      if defense_type == "none":
+      if defense_type in ["none", "badfl"]:
         from src.fl.baseserver import FedAvgAggregator
         self.agg_server = FedAvgAggregator(self.model, self.testloader, self.device)
       elif defense_type == "krum":
@@ -174,9 +175,6 @@ class BenignClient(BaseClient):
       elif defense_type == "trim":
         from src.defenses.trim import TrimmedMeanServer
         self.agg_server = TrimmedMeanServer(self.model, self.testloader, self.device, config)
-      elif defense_type == "median":
-        from src.defenses.trim import MedianServer
-        self.agg_server = MedianServer(self.model, self.testloader, self.device, config)
       elif defense_type == "clip":
         from src.defenses.clip_dp import NormClippingServer
         self.agg_server = NormClippingServer(self.model, self.testloader, self.device, config)
@@ -206,64 +204,87 @@ class BenignClient(BaseClient):
         self.agg_server = SCCLIPServer(self.model, self.testloader, self.device, config) 
       elif defense_type == "dfldual" :
          from src.defenses.dfldual import DFLDualServer
-         self.agg_server = DFLDualServer(self.model, self.testloader, self.device, config)     
+         self.agg_server = DFLDualServer(self.model, self.testloader, self.device, config)      
       elif defense_type == "ubar":
         from src.defenses.ubar import UBARServer
-        self.agg_server = UBARServer(self.model, self.testloader, self.device, config)  
-      elif defense_type == "saga":
-        from src.defenses.saga import SAGAServer
-        self.agg_server = SAGAServer(self.model, self.testloader, self.device, config)
+        from src.defenses.val_loader import build_val_loader
+        ubar_config = dict(config)  # shallow copy -- don't mutate the shared config object
+        # UBAR (IID only) requires the client's own training dataset for Stage 2 loss-based filtering.
+        # Note: Using this causes convergence issues, especially in Non-IID settings, 
+        # So we provide a held-out class-balanced validation set here for an optimistic evaluation.
+        # This provide an upper bound on the performance of the defense.
+        ubar_config['ubar_val_dataset'] = self.testloader.dataset if self.testloader else None
+        ##### Alternatively, you can build a validation loader or use all the training data ####
+        # We build a validation loader from the client's training data.
+        #ubar_config['ubar_val_dataset'] = build_val_loader(
+         #  self.trainloader,
+         #  samples_per_class=config.get('val_samples_per_class', 10),
+         #  num_classes=config.get('num_classes'),   # optional; speeds up the scan if you have it
+         #  seed=config.get('seed'),
+         # ).dataset
+        self.agg_server = UBARServer(self.model, self.testloader, self.device, ubar_config)
+      elif defense_type == "sentinel":
+        from src.defenses.sentinel import SentinelServer
+        sentinel_config = dict(config)  # shallow copy -- don't mutate the shared config object
+        # The paper evaluates Stage 2 on a small validation set (10% of the training set).
+        # Here we provide the test dataset (25% of the training set) for evaluation. 
+        # Note: The paper's Stage 2 evaluation uses the client's own training samples.
+        # This cause convergence issues, especially in Non-IID settings, 
+        # So we provide a held-out class-balanced validation set here for an optimistic evaluation.
+        # This provide an upper bound on the performance of the defense.
+        sentinel_config['sentinel_val_dataset'] = self.testloader.dataset if self.testloader else None
+        self.agg_server = SentinelServer(self.model, self.testloader, self.device, sentinel_config)   
+
       else:
         raise ValueError(f"Unknown defense type: {defense_type}")
 
-    def aggregate_from_neighbors(self, neighbor_updates, defense_type="none", config=None, current_round=1):
+    def aggregate_from_neighbors(self, neighbor_params, defense_type="none", config=None, current_round=1):
        """
        Aggregate neighbor updates into a new global model for this client.
        Each neighbor update is expected as a tuple: (weights, num_samples, trigger_state).
        """
-  
-       if not neighbor_updates:
-        # No neighbors sent updates, fallback to local model
-        print(f"[Client {self.id}] No neighbor updates received. Keeping local model.")
-        return self.model.state_dict()
+
+       neighbor_updates = [p[1] for p in neighbor_params]  
+
+       if len(neighbor_updates) == 0:
+          # No neighbors sent updates, fallback to local model
+          print(f"[Client {self.id}] No neighbor updates received. Keeping local model.")
+          return self.model.state_dict()
 
        # --- Initialize a local per client defensive server  ---
        if self.agg_server is None:
           self._init_agg_server(defense_type, config)
+          
 
        print(f"[CLIENT {self.id}] Started aggregation…")
        
        # --- Feed own updates to own server ---
        self.agg_server.set_params(self.get_params())
-    
-       if defense_type == "ubar":
-          # UBAR: store own loss as local_loss
-          local_eval = self.local_evaluate()
-          self.agg_server.local_loss = local_eval.get("metrics", {}).get("loss", None)
        
        # --- Feed recieved neighbor updates ---
        valid_updates = 0
        for update in neighbor_updates:
-          weights, num_samples, metrics, trigger_state = update
-    
-          # Standard FedAvg ingestion
+          neigh = neighbor_params[valid_updates][0]  # get neighbor id from the original list
+          weights, num_samples, _, _ = update  # 4-tuple
+
+          #print(f"[Client {self.id}] Processing update from neighbor {neigh} with {num_samples} samples.")
+        
           if weights is not None and num_samples is not None:
-            self.agg_server.receive_update(weights, num_samples)
+            if defense_type in ["argus", "sentinel"]:
+              self.agg_server.receive_update(weights, num_samples, sender_id=neigh)
+            else:
+              self.agg_server.receive_update(weights, num_samples)
+        
             valid_updates += 1
 
-          # UBAR: need loss 
-          if defense_type == "ubar" and metrics is not None :
-              loss = metrics.get("loss", None)
-              if loss is not None:
-                  self.agg_server.receive_loss(float(loss))
-
+                
        # --- No valid updates, fallback ---       
        if valid_updates == 0:
           print(f"[Client {self.id}] No valid neighbor updates. Keeping local model.")
           return self.model.state_dict()
 
        # --- Aggregate recieved updates ---
-       if defense_type in ['balance', 'abalance', "dfldual", "ubar", "saga"]:
+       if defense_type in ['balance', 'asg', 'aspp', 'abalance', "saga", "dfldual", "ubar", "sentinel", "argus"]:
            agg_weights = self.agg_server.aggregate(current_round)  # returns a state_dict  
        else:    
            agg_weights = self.agg_server.aggregate()  # returns a state_dict
@@ -281,7 +302,18 @@ class BenignClient(BaseClient):
             mix_ratio * own_state[k] +
             (1 - mix_ratio) * agg_weights[k]
           )
-      
+         # --- Weak DP noise injection after mixing ---
+         #std_dev = 0.01
+         #with torch.no_grad():
+           #for name, param in mixed_state.items():
+              #if "weight" in name or "bias" in name:
+               # noise = torch.normal(
+                #    mean=0.0,
+                 #   std=std_dev,   # weak DP strength (small sigma)
+                  #  size=param.shape,
+                   # device=param.device
+               # )
+                #mixed_state[name] = param + noise
        except Exception as e:
           print(f"[CLIENT {self.id}] Exception in mixing: {e}")
 

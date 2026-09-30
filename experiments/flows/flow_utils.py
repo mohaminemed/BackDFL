@@ -4,6 +4,7 @@ import torch
 import numpy as np
 from torch.utils.data import DataLoader, Dataset
 import os
+from torch.utils.data import Subset
 
 # --- Dataset adapters & models ---
 from src.datasets.imagenet import TinyImageNetAdapter
@@ -39,9 +40,8 @@ from src.attacks.scaling_client import ScalingAttackClient
 from src.attacks.neurotoxin_client import NeurotoxinClient
 from src.attacks.a3fl_client import A3FLClient
 from src.attacks.dba_client import DBAClient
-from src.attacks.iba_client import IBAClient
+from src.attacks.iba_client import IBAClient    
 from src.attacks.omp_client import OMPClient
-
 
 
 from src.attacks.selectors.randomselector import RandomSelector
@@ -96,26 +96,6 @@ def average_state_dicts(state_dicts, weights=None):
         avg[k] = (acc / total_w).clone()
     return avg
 
-def recreate_asr_test_loader_old(testloader, trigger, target_class, batch_size, seed=42):
-    """
-    Build a poisoned evaluation dataloader using the updated trigger/pattern.
-    Works for both A3FL (pattern) and IBA (generator).
-    """
-    # --- Create poisoned evaluation dataset ---
-    poisoned_dataset = BackdoorDataset(
-        original_dataset=testloader.dataset,
-        trigger_fn=trigger.apply,
-        target_label=target_class,
-        poison_fraction=1.0,
-        seed=seed,
-        poison_exclude_target=True
-    )
-    # --- Create ASR loader ---
-    return DataLoader(
-        poisoned_dataset,
-        batch_size=batch_size,
-        shuffle=True
-    )
 
 def evaluate_model_accuracy(model, test_loader, device):
     """Evaluate classification accuracy (0..1)."""
@@ -138,17 +118,17 @@ def recreate_asr_test_loader(testloader, trigger, target_class, batch_size, seed
         target_label=target_class,
         poison_fraction=1.0,
         seed=seed,
-        poison_exclude_target=True
+        poison_exclude_target=True,
     )
+    asr_set = Subset(poisoned_dataset, sorted(poisoned_dataset.poisoned_indices))
     return DataLoader(
-        poisoned_dataset,
+        asr_set,
         batch_size=batch_size,
-        shuffle=False,          # eval doesn't need shuffling — cheaper & reproducible
+        shuffle=False,
         num_workers=num_workers,
         pin_memory=pin_memory,
-        persistent_workers=False  #  must stay False for correctness
+        persistent_workers=False,
     )
-
 def evaluate_asr(model, backdoor_loader: DataLoader, device: torch.device):
     if backdoor_loader is None: return 0.0
     model.eval()
@@ -326,8 +306,9 @@ def build_clients(client_loaders: Dict[int, object],
                                    attack_start_round=config.get('attack_start_round', 0),
                                    attack_end_round=config.get('attack_end_round', -1),
                                    poison_fraction=config.get('poisoning_rate', 0.1),
-                                   malicious_epochs=config.get('malicious_epochs', 10))  
-                                   
+                                   malicious_epochs=config.get('malicious_epochs', 10))
+
+                                     
             elif attack_type == 'dba':
                 # If trigger is a list indexed by malicious-order, map to the position in malicious_ids
                 try:
@@ -504,8 +485,9 @@ def prepare_environment(config):
             seed=config.get('seed', 42),
             poison_exclude_target=True
         )
+        asr_set = Subset(poisoned_dataset, sorted(poisoned_dataset.poisoned_indices))
         backdoor_loader_for_eval = DataLoader(
-            poisoned_dataset,
+            asr_set,
             batch_size=config['batch_size'],
             shuffle=True
             )    

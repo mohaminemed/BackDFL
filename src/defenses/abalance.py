@@ -9,7 +9,43 @@ from ..fl.baseserver import FedAvgAggregator
 
 class AdaptiveBalanceServer(FedAvgAggregator):
     """
-    Adaptive BALANCE defense.
+    Adaptive BALANCE (ABALANCE) defense.
+
+    Extends BALANCE (Fang et al., 2024) with an adaptive acceptance threshold.
+    Each client acts as a defensive aggregator: it compares every received
+    neighbor model w_j^(t) to its own reference model w_i^(t) and accepts only
+    those whose deviation is small enough. Accepted updates are then aggregated
+    with FedAvg.
+
+    Deviation of neighbor j at round t:
+        d_ij^(t) = || w_i^(t) - w_j^(t) ||_2
+
+    BALANCE uses a fixed bound with exponential decay:
+        tau^(t) = gamma * exp(-kappa * lambda(t)) * ||w_i^(t)||_2
+    which can be too strict under non-i.i.d. data or too permissive for
+    stealthy updates.
+
+    ABALANCE instead derives the threshold from the distribution of received
+    distances and from its own history:
+        tau_adaptive^(t) = min( median(d_ij^(t)) + sigma, tau_prev )
+                           * 1 / (1 + gamma * sigma * lambda(t))
+    where:
+        - sigma is the median absolute deviation (MAD) of the received
+          distances d_ij^(t),
+        - tau_prev is the threshold used in the previous round,
+        - lambda(t) is the round-dependent schedule term,
+        - gamma is the tightening coefficient.
+
+    Behavior:
+        - Early rounds: the median + MAD term relaxes acceptance, so benign
+          but heterogeneous (non-i.i.d.) updates are not rejected.
+        - Later rounds: capping by tau_prev and the 1 / (1 + gamma * sigma *
+          lambda(t)) factor progressively tighten the threshold (temporal
+          consistency), limiting abrupt jumps that stealthy backdoor attacks
+          rely on.
+
+    Neighbors with d_ij^(t) <= tau_adaptive^(t) are accepted; the rest are
+    discarded before aggregation.
     """
 
     def __init__(

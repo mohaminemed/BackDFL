@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ATTACKS=(neurotoxin) #BAs: neurotoxin badnets scaling iba dba // MPAs: krum, trim, gauss, omp, DPAs: label_flip, feature
-DEFENSES=(none)   #BDs: weakdp clip deepsight mmad krum ubar scclip dfldual balance abalance trim spp flame
-DATASETS=(har) #cifar10 cifar100 mnist femnist har gtsrb fashionmnist nslkdd unsw_nb15 nbaiot
+DEFENSES=(ubar sentinel)   #BDs: weakdp clip deepsight mmad krum ubar scclip dfldual balance abalance trim spp flame
+DATASETS=(nslkdd) #cifar10 cifar100 mnist femnist har gtsrb fashionmnist nslkdd unsw_nb15 nbaiot
 
 
 

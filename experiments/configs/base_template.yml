@@ -1,15 +1,20 @@
-# --- Experiment Metadata ---
+# =============================================================================
+# Federated Learning Experiment Configuration
+# Placeholders in {braces} are filled in by the experiment runner.
+# =============================================================================
+
+# --- Experiment Metadata ---------------------------------------------------
 experiment_name: "{attack}_{defense}_{dataset}_{flow}"
 
-# --- FL Parameters ---
-flow: "{flow}"      # centralized, decentralized
+# --- FL Parameters ---------------------------------------------------------
+flow: "{flow}"                    # centralized | decentralized
 dataset: "{dataset}"
 num_clients: 20
-num_parallel_clients: 10  #for parallel training, set to 1 for serial training
-client_selection_fraction: 1.0  #for centralized, num_clients for decentralized
+num_parallel_clients: 20          # >1 = parallel training, 1 = serial training
+client_selection_fraction: 1.0    # centralized: fraction of clients; decentralized: all (num_clients)
 num_rounds: 100
 local_epochs: 5
-iid: "dirichlet"  #
+iid: "dirichlet"                  # data partitioning scheme
 dirichlet_alpha: 0.5
 batch_size: 32
 test_batch_size: 256
@@ -17,30 +22,45 @@ lr: 0.01
 seed: 42
 mix_ratio: 0.5
 net_churn_rho: 0.0
-#pretrained_path: experiments/models/none_none_gtsrb_decentralized_30_non_iid.pth
+
+# --- Checkpointing ---------------------------------------------------------
+#pretrained_path: experiments/models/neurotoxin_saga_nslkdd_decentralized_30_non_iid.pth
 #start_round: 31
-save_model: False
+save_model: false
 save_model_path: "experiments/models/{attack}_{defense}_{dataset}_{flow}.pth"
 save_model_rounds: [30, 60, 100]
 
-# --- Training Attack Parameters ---
-attack: "{attack}"        # none, badnets, scaling, neurotoxin, a3fl, dba, iba
+
+# --- Statistics Logging ------------------------------------------------------
+save_statistics: false
+statistic_analysis_path: "experiments/statistics/{attack}_{defense}_{dataset}_{flow}.pkl"
+statistic_analysis_rounds: 35
+
+
+# --- Training Attack Parameters --------------------------------------------
+attack: "{attack}"                # none | badnets | scaling | neurotoxin | a3fl | dba | iba
 num_malicious: 3
-malicious_strategy: "random" # first <=> clustered 
-target_class: 1 # 1 for har and cyber datasets, 7 for CV datasets
+malicious_strategy: "random"      # random | first (first = clustered)
+target_class: 0                   # 1 for HAR; 0: "normal" for NSLKDD and UNSW-NB15; 7: "speed limit" for GTSRB; 7: for other CV datasets
+                                  # if the target class is common in the clean data, the ASR may be high
+                                   
 poisoning_rate: 0.25
 attack_start_round: 30
-attack_end_round: 60 # oneshot for scaling start = end, throughout the training for Badnets -1 
-attack_mode: "continuous" #"sporadic"   
+attack_end_round: 50             # scaling (one-shot): start == end; BadNets (whole training): -1
+attack_mode: "continuous"         # continuous | sporadic
 
-# --- Aggregation Attack Parameters ---
-attack_type: "biased_mix" #"align_neighbor"  #"scale_update" 
+# --- Aggregation Attack Parameters -----------------------------------------
+attack_type: "biased_mix"     # scale_update | biased_mix | align_neighbor
+                                  # scale_update: scale the malicious update to maximize its impact on the global model
+                                  # biased_mix: mix malicious updates with benign updates to bias the aggregation
+                                  # align_neighbor: align the pre train malicious update with a specific neighbor's update
 biased_mix_ratio: 0.5
+target_neighbor: false            # align the post train neurotoxin attack with a specific previous neighbor (true) or own previous (false)
 scale: 2.0
 stealth_after: 40
 stealth_ratio: 0.9
 
-# -- Attack-specific Parameters --
+# --- Attack-specific Parameters --------------------------------------------
 scale_factor: 2.0
 malicious_epochs: 10
 mask_k_percent: 0.05
@@ -48,128 +68,122 @@ trigger_epochs: 10
 trigger_lr: 0.005
 
 omp_gamma_init: 2.0
-omp_tau: 1e-3
+omp_tau: 1.0e-3
 omp_perturbation: "sign"
 
-
-# --- Defense Parameters ---
+# --- Defense Parameters ----------------------------------------------------
 defense: "{defense}"
 
-# -- Defense-specific Parameters --
-clipping_norm: 4.0 #40.0 # 4.0 with gtsrb and mnist
-dp_std_dev: 0.01
+# Defense-specific parameters
+clipping_norm: 4.0                # Default median
+dp_std_dev: 0.01                  # Weak DP noise
 
 deepsight_num_samples: 256
 deepsight_num_seeds: 3
 deepsight_batch_size: 64
 deepsight_tau: 0.5
 
-flame_lambda: 0.00001   #0.001 hurts convergence, 0.0005 hurts on cifar10,  high ASR but better ACC on other DS
+flame_lambda: 0.00001             # 0.001 hurts convergence; 0.0005 hurts on CIFAR-10;
+                                  # small values give higher ASR but better ACC on other datasets
 flame_eta: 1.0
 
 krum_f: 2
-krum_m: 3
+krum_m: 3                         # 3 for the 20-client case; adjust for larger numbers of clients
 
-trim_b: 2
+trim_b: 2                         # 2 for the 20-client case; adjust for larger numbers of clients
 
-balance_gamma: 0.5 # 0.5 default to 0.3 but does not work
-balance_kappa: 1.0 # 1-4 default but too strict 
-balance_variant: 'exp_decay' #'adaptive' #'exp_decay'
+balance_gamma: 0.5                # 0.3 is the reference default but did not work here
+balance_kappa: 1.0                # 1-4 is the reference range, but too strict
+balance_variant: "exp_decay"      # exp_decay | adaptive
 balance_weighted: false
 
 ubar_rho: 0.45
-ubar_weighted: false
-ubar_fallback: 'best'
+ubar_batch_size: 128               # batch size for UBAR's loss-based evaluation;
 
 spp_fraction: 0.5
 spp_fixed_count: null
-spp_metric: 'cosine' # 'combined' #
-spp_combined_weights: null #{'cosine': 0.3, 'l2': 0.7} # null
-spp_threshold: 0.9  # relative acceptance mode if not set
+spp_metric: "cosine"              # cosine | combined
+spp_combined_weights: null        # e.g. {cosine: 0.3, l2: 0.7}
+spp_threshold: 0.9                # if unset, relative acceptance mode is used
 spp_seed: 1234
 
 mm_p: 0.5
 mm_whiten: true
-mm_min_clients: 4
-mm_eps: 1e-6
-mm_metrics: ['manhattan','euclidean','cosine']
+mm_min_clients: 4                 # minimum number of clients required for the MMAD defense
+mm_eps: 1.0e-6
+mm_metrics: ["manhattan", "euclidean", "cosine"]
 
 dfldual_alpha: 1.0
-dfldual_C1: 1e6
-dfldual_C2: 10 
+dfldual_C1: 1.0e+6
+dfldual_C2: 10
 
+abalance_gamma: 0.1               # smoothing
+abalance_tau: 1.0                 # early benign acceptance
 
-abalance_gamma: 0.1    # smoothing
-abalance_tau: 1.0     # early benign acceptance
+sentinel_tau_s: 0.5               # similarity threshold; default is median - mad
+sentinel_mad_k: 2.0               # MAD multiplier for outlier cutoff
+sentinel_bootstrap_min: 300       # minimum samples/steps before the filter activates
 
-
-# --- Topology / Graph configuration ---
-# We can either provide a single topology mapping (object) or a list of topologies
-# to sweep over (array). When list: your experiment harness should iterate over each entry.
+# --- Topology / Graph Configuration ----------------------------------------
+# Provide either a single topology (mode: single) or a list to sweep over
+# (mode: sweep); the harness iterates over each sweep entry.
 topology:
-  # mode: "single" | "sweep"
-  mode: "single"
+  mode: "single"                  # single | sweep
 
-  # Single topology definition (used when mode == "single")
+  # Used when mode == "single"
   single:
-    name: "random_regular"           # friendly name for logs / filenames
-    type: "random_regular"         # supported: random | ring | line | cycle |
-                                # erdos_renyi | watts_strogatz | barabasi_albert |
-                                # random_regular | random_regular_nx | custom
-    n: 20                       # number of nodes (overrides top-level num_clients if provided)
-    k: 7                    # target degree (best-effort) - used by many generators
+    name: "random_regular"        # friendly name for logs / filenames
+    type: "random_regular"        # random | ring | line | cycle | erdos_renyi |
+                                  # watts_strogatz | barabasi_albert |
+                                  # random_regular | random_regular_nx | custom
+    n: 20                         # number of nodes (overrides num_clients if provided)
+    k: 7                          # target degree (best-effort)
     seed: 42
 
-    # Graph-specific parameters (only relevant for particular types)
+    # Type-specific parameters
     params:
-      # for erdos_renyi
-      p: 0.24  #0.08
-      # for watts_strogatz
-      beta: 0.1
-      # if your WS implementation requires even k, set force_k_even true
-      force_k_even: true
-      # for barabasi_albert
-      m: 2
-      # for random_regular via networkx (explicitly use NX impl)
-      use_networkx_random_regular: false
-      # for "custom": path to adjacency file (json/yaml/gml); relative to experiment dir
-      custom_path: null
-    # connectivity / post-processing
-    ensure_connected: true      # if false, accept disconnected graphs (spectral gap 0)
-    max_additional_edge_attempts: 5000  # attempts to reach k if needed
+      p: 0.24                     # erdos_renyi (0.08 also tried)
+      beta: 0.1                   # watts_strogatz
+      force_k_even: true          # watts_strogatz: enforce even k
+      m: 2                        # barabasi_albert
+      use_networkx_random_regular: false   # random_regular: use the NetworkX implementation
+      custom_path: null           # custom: adjacency file (json/yaml/gml), relative to experiment dir
 
-    # outputs you want saved/returned by the generator (your harness can read these)
-    save_graph_as: "adj"        # "adj" => adjacency dict yaml/json, "gml" => networkx gml if nx available
-    compute_metrics: true       # compute & record algebraic_connectivity, diameter, avg_path_length, clustering
+    # Connectivity / post-processing
+    ensure_connected: true        # if false, disconnected graphs are accepted (spectral gap 0)
+    max_additional_edge_attempts: 5000   # attempts to reach k if needed
+
+    # Outputs
+    save_graph_as: "adj"          # adj = adjacency dict (yaml/json) | gml = NetworkX GML
+    compute_metrics: true
     metrics_to_compute:
       - algebraic_connectivity
       - diameter
       - avg_shortest_path_length
       - average_clustering
 
-    # spectral-gap targeting (optional)
+    # Spectral-gap targeting (optional)
     spectral_gap:
-      target: null              # float target to search for (null to skip)
-      approx_search: false      # true to run heuristic search (samples + tries_per_sample)
-      param_bounds: [0.0, 1.0]  # bounds for parameter search (e.g., p or beta)
+      target: null                # float target; null to skip
+      approx_search: false        # true = heuristic search (samples x tries_per_sample)
+      param_bounds: [0.0, 1.0]    # search bounds (e.g. for p or beta)
       samples: 30
       tries_per_sample: 3
-      stop_if_within: 0.01     # stop early if found within this gap absolute error
+      stop_if_within: 0.01        # stop early when within this absolute error
 
-    # options for reproducible multi-instance experiments
-    instances: 1                # number of independent graph instances to generate for this config
-    annotate_instance_id: true  # add instance id to output filenames
+    # Reproducible multi-instance runs
+    instances: 1
+    annotate_instance_id: true    # add instance id to output filenames
 
-  # Sweep example (used when mode == "sweep")
+  # Used when mode == "sweep"
   sweep:
-    # list of topology configs - runner should iterate these
     - name: "ws_beta_sweep"
       type: "watts_strogatz"
       n: 10
       k: 6
       seed: 0
       params:
-        beta: null         # null here means this will be replaced by `sweep_over`
+        beta: null                # replaced by values from sweep_over
       sweep_over:
         param: "beta"
         values: [0.0, 0.01, 0.05, 0.1, 0.2, 0.4]
@@ -182,18 +196,18 @@ topology:
       k: 6
       seed: 1
       params:
-        p: null
+        p: null                   # replaced by values from sweep_over
       sweep_over:
         param: "p"
         values: [0.02, 0.04, 0.06, 0.08, 0.12]
       instances_per_value: 10
       compute_metrics: true
 
-  # Global defaults used when a field is missing in single/sweep entries
+  # Fallbacks for fields missing in single/sweep entries
   defaults:
     ensure_connected: true
     compute_metrics: true
     instances: 1
 
-
+# --- Hardware --------------------------------------------------------------
 device: "cuda"

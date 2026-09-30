@@ -154,10 +154,12 @@ def run_decentralized_flow(env, config, logger):
             print(f"ERROR: Could not load pretrained model. Proceeding with random init.")
 
     # Storage for Statistics-space analysis
+    save_statistics = config.get('save_statistics', False)
     statistic_analysis_path = config.get('statistic_analysis_path', None)
     statistic_analysis_round = int(config.get('statistic_analysis_round', total_rounds))
 
-    if statistic_analysis_path:
+
+    if save_statistics and statistic_analysis_path:
       os.makedirs(os.path.dirname(statistic_analysis_path) or '.', exist_ok=True)
 
       statistic_analysis_data = {
@@ -186,14 +188,37 @@ def run_decentralized_flow(env, config, logger):
 
             extra_args = {}
             if client.__class__.__name__ == 'NeurotoxinClient':
-                agg_grad = {}
-                for name, tensor in model_params.items():
-                    prev_tensor = _get_prev_param_or_zero(prev_model_params_per_client, client.id, name, tensor, device)
-                    agg_grad[name] = (tensor.to(device) - prev_tensor).clone()
-                extra_args['prev_global_grad'] = agg_grad
-                prev_model_params_per_client[client.id] = {k: v.detach().cpu().clone() for k, v in model_params.items()}
+               agg_grad = {} 
 
-            
+               # Default: use the attacker's own previous parameters
+               if config.get("target_neighbor") :
+                   prev_client_id = client.id
+               else:
+                   # First neighbor of the attacker in the topology is used as the target for alignment
+                   prev_client_id = neighbors.get(client.id, [client.id])[0]
+                   #prev_client_id = random.choice(neighbors.get(client.id, [client.id]))
+
+               for name, tensor in model_params.items():
+                  prev_tensor = _get_prev_param_or_zero(
+                    prev_model_params_per_client,
+                    prev_client_id,
+                    name,
+                    tensor,
+                    device
+                  )
+                  agg_grad[name] = (
+                    tensor.to(device) - prev_tensor
+                  ).clone()
+
+               extra_args['prev_global_grad'] = agg_grad
+
+               # Still save the attacker's current model as its own previous model
+               prev_model_params_per_client[client.id] = {
+                 k: v.detach().cpu().clone()
+                 for k, v in model_params.items()
+               }
+
+        
             worker_args.append((client, model_params, config, current_round, extra_args))
 
         t_train_start = time.time()
@@ -246,24 +271,27 @@ def run_decentralized_flow(env, config, logger):
                continue 
             
             neighs = neighbors.get(client.id, [])
-            collected = [updates_map[nid] for nid in neighs if nid in updates_map and (nid in active_client_ids or nid in mal_client_ids)]
-
-
+            collected = [(nid, updates_map[nid]) for nid in neighs if nid in updates_map and (nid in active_client_ids or nid in mal_client_ids)]
+         
             if len(collected) == 0:
                 continue
 
+            neighbor_updates = [c[1] for c in collected]
+
             if client.__class__.__name__ in ('NeurotoxinClient', 'A3FLClient', 'BadNetsClient', 'DBAClient', 'IBAClient', 'ScalingAttackClient') and current_round >= config.get('attack_start_round', 0):
                 try:
-                    client.aggregate_from_neighbors_attacker(collected, config=config, prev_global_params_per_client=prev_model_params_per_client, round_idx=current_round)
+                    
+                    client.aggregate_from_neighbors_attacker(neighbor_updates, config=config, prev_global_params_per_client=prev_model_params_per_client, round_idx=current_round)
                 except AttributeError:
                     client.aggregate_from_neighbors(collected, defense_type='none', config=None)
             else:
                 try: 
-                    client.aggregate_from_neighbors(collected, config.get('defense', 'none'), config, current_round)
+                     client.aggregate_from_neighbors(collected, config.get('defense', 'none'), config, current_round)
                 except Exception:
                     print(f"Client: {client.id} aggregation failed")    
             
-            trigger_states = [c[3] for c in collected if c[3] is not None]
+            # Process trigger states
+            trigger_states = [c[3] for c in neighbor_updates if c[3] is not None]
             if trigger_states:
                 ts = trigger_states[0]
                 if hasattr(client, 'trigger'): 
@@ -278,7 +306,7 @@ def run_decentralized_flow(env, config, logger):
         # ============================================================
         # SAVE MODEL SNAPSHOT FOR STATISTICS ANALYSIS
         # ============================================================
-        if statistic_analysis_path and current_round == statistic_analysis_round:
+        if save_statistics and current_round == statistic_analysis_round:
 
             print(
                 f"[Statistics Analysis] Saving model snapshot "

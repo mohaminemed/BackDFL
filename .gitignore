@@ -7,13 +7,11 @@ venv/
 .vscode/*
 # ---- Datasets ----
 data/*
-data
-data/har
-data/gtsb
+data/
 experiments/models/
 experiments/logs/
 experiments/outputs/
-experiments/outputs_v1/
+experiments/statistics/
 experiments/results/  
 ploting/  
 plots/

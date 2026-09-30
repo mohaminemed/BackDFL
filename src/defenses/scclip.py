@@ -27,7 +27,7 @@ def _add_param_dicts(a: Dict[str, torch.Tensor], b: Dict[str, torch.Tensor], alp
 
 class SCCLIPServer(FedAvgAggregator):
     """
-    Server-side implementation inspired by the CLIPPEDGOSSIP / SCCLIP defense.
+    SCCLIP implementation.
 
     Behavior:
     - Compute client deltas: delta_j = local_params_j - global_params

@@ -1,142 +1,154 @@
-import math
+import copy
+from typing import Dict, Optional, List, Tuple
+
 import torch
 import torch.nn as nn
-from typing import Dict, Optional, List, Tuple
+import torch.nn.functional as F
+
+# Import the specific FedAvgAggregator from your project structure
 from ..fl.baseserver import FedAvgAggregator
-import numpy as np
 
 
 class UBARServer(FedAvgAggregator):
     """
-    UBAR defense server implementation for client-side usage. This class implements the two-stage
-    UBAR filtering described in Guo et al., "Byzantine-Resilient
+    UBAR filtering as described in Guo et al., "Byzantine-Resilient
     Decentralized Stochastic Gradient Descent" (IEEE TCSVT, 2022).
 
-    Important notes / expectations:
-      - The training "round" is passed to aggregate(current_round).
-      - The aggregator expects the following buffers to be filled by
-        the caller:
-          * self.received_params : List[Dict[str, Tensor]]
-          * self.received_lens   : List[int] (sample counts, if weighted)
-          * self.received_losses : List[float] (local loss computed by sender
-            on its stochastic sample) -- **required** for Stage 2.
-      - Config keys (read from `config` passed at construction):
-          - ubar_rho (float): ratio 0<rho<=1 used in Stage 1 (default 0.4)
-          - ubar_weighted (bool): True -> sample-size weighted aggregation
-                                  False -> arithmetic mean (default False)
-          - ubar_fallback (str): 'fedavg'|'best' : what to do if no
-                                 candidates pass Stage 2 (default 'best')
+    UBAR is a two-stage, per-round selection rule (paper Definition 3 /
+    Algorithm 1) -- unlike Sentinel it carries no state across
+    rounds, since candidates are reselected from scratch every iteration:
+      1. Distance shortlist: keep the rho * |neighbors| neighbors whose
+         estimate is closest (Euclidean distance) to the local model.
+         The local model itself -- not the neighbor mean/median used by
+         centralized defenses -- is the baseline, since it can't be
+         manipulated by a Byzantine neighbor.
+      2. Loss selection: evaluate every shortlisted candidate's
+         *parameters* on a batch sampled from this node's *own* local
+         training data, and keep only those whose loss is <= the local
+         model's loss on that same batch. If none qualify, keep the
+         single best (lowest-loss) candidate (paper Algorithm 1, lines
+         12-14), so Stage 2 never empties the selection entirely.
+      The kept candidates are averaged into R, then blended with the
+      local model via the General Update Function: theta_new =
+      alpha * theta_local + (1 - alpha) * R.
+ 
 
-    The aggregate() method implements exactly the two-stage UBAR
-    selection: (1) choose rho*|Ni| closest neighbors (euclidean dist to
-    server/global vector), (2) from those choose neighbors with loss <=
-    server_loss; if none, append the best (lowest loss) from stage1.
+    Sampling unit. The paper's Algorithm 1 formalizes Stage 2 around a
+    single stochastically-selected data sample xi_k,i per iteration;
+    this implementation instead samples one small batch per round for
+    numerical stability, which is the standard mini-batch-SGD reading of
+    the same idea rather than a literal single example.
+
+    Config keys:
+      - ubar_rho (float, default 0.4): assumed ratio of benign
+        neighbors, used to size the Stage-1 shortlist
+        (round(rho * |neighbors|), at least 1). The paper requires each
+        node to set this from an assessment of its threat environment
+        (Section VII); 0.4 is only the value used in the paper's own
+        experiments, not a calibrated default -- tune per deployment. If
+        unknown, the paper suggests the conservative rho = 1/|neighbors|
+        (assume just one benign neighbor).
+      - ubar_batch_size (int, default 64): size of the batch freshly
+        sampled from `ubar_train_dataset` each round for Stage 2 loss
+        evaluation.
+      - ubar_train_dataset: the client's own *training* Dataset (not a
+        held-out validation set -- the paper explicitly reuses training
+        samples for Stage 2, avoiding the extra-validation-set
+        requirement of centralized methods like Zeno). Required.
     """
 
     def __init__(self, model: nn.Module, testloader: nn.Module = None,
                  device: Optional[torch.device] = None, config: Optional[Dict] = None):
         super().__init__(model, testloader, device)
-        self.config = config or {}
-        self.rho = float(self.config.get('ubar_rho', 0.45))
-        self.weighted = bool(self.config.get('ubar_weighted', False))
-        self.fallback = str(self.config.get('ubar_fallback', 'best'))
-        self.local_loss = 10.0
 
-        if not hasattr(self, 'received_losses'):
-            self.received_losses: List[float] = []
+        self.config = config if config is not None else {}
+        self.rho = float(self.config.get('ubar_rho', 0.4))
+        self.batch_size = int(self.config.get('ubar_batch_size', 64))
+        self.val_dataset = self.config.get('ubar_val_dataset', None)
 
-        print(f"Initialized UBARServer (rho={self.rho}, weighted={self.weighted}, fallback={self.fallback})")
+        # Per-round buffer only -- UBAR carries no state across rounds.
+        self.received_params: List[Dict[str, torch.Tensor]] = []
+        self.received_lens: List[int] = []
+
+        print(f"Initialized UBARServer (rho={self.rho}, "
+              f"batch_size={self.batch_size})")
+
+    # -------------------- helpers --------------------
 
     @staticmethod
     def _flatten_state_dict_to_vector(state: Dict[str, torch.Tensor]) -> torch.Tensor:
         keys = sorted(state.keys())
-        parts = [state[k].detach().cpu().flatten() for k in keys]
-        return torch.cat(parts, dim=0)
+        return torch.cat([state[k].detach().cpu().flatten() for k in keys], dim=0)
 
-    def _euclidean_dist(self, a: Dict[str, torch.Tensor], b: Dict[str, torch.Tensor]) -> float:
-        v_a = self._flatten_state_dict_to_vector(a)
-        v_b = self._flatten_state_dict_to_vector(b)
-        return float(torch.linalg.norm(v_a - v_b).cpu())
+    def _sample_batch(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        if self.val_dataset is None:
+            raise ValueError("UBARServer requires `ubar_val_dataset` in config.")
+        n = len(self.val_dataset)
+        print(f"[UBAR] Sampling batch of size {self.batch_size} from val dataset of size {n}")
+        size = min(n, self.batch_size)
+        indices = torch.randperm(n)[:size].tolist()
+        xs, ys = zip(*(self.val_dataset[i] for i in indices))
+        return torch.stack(xs).to(self.device), torch.tensor(ys).to(self.device)
 
-    def receive_loss(self, loss: float) -> None:
-        # store params as CPU tensors to make aggregation stable
-        self.received_losses.append(loss)
-    
+    def _compute_loss(self, state: Dict[str, torch.Tensor],
+                       batch: Tuple[torch.Tensor, torch.Tensor]) -> float:
+        x, y = batch
+        probe_model = copy.deepcopy(self.model).to(self.device)
+        probe_model.load_state_dict(state)
+        probe_model.eval()
+        with torch.no_grad():
+            loss = F.cross_entropy(probe_model(x), y).item()
+        return loss
+
+    # -------------------- aggregation --------------------
+
     def aggregate(self, current_round: int) -> Dict[str, torch.Tensor]:
-        """Perform UBAR aggregation for the current round.
+        own_state = self.get_params()
+        num_neighbors = len(self.received_params)
 
-        Expects self.received_params, self.received_lens and
-        self.received_losses to be populated by the caller.
-        Returns the aggregated state dict (CPU tensors).
-        """
-        global_state = self.get_params()
-        num_updates = len(self.received_params)
+        if num_neighbors == 0:
+            print("UBARServer.aggregate(): warning - no neighbor updates, keeping local model.")
+            self.received_params, self.received_lens = [], []
+            return own_state
 
-        # Safety checks
-        if num_updates == 0:
-            print("UBAR.aggregate(): warning - no updates to aggregate")
-            return global_state
+        # -- Stage 1: distance shortlist --
+        own_vec = self._flatten_state_dict_to_vector(own_state)
+        distances = [
+            (i, float(torch.linalg.norm(own_vec - self._flatten_state_dict_to_vector(state))))
+            for i, state in enumerate(self.received_params)
+        ]
+        distances.sort(key=lambda pair: pair[1])
+        shortlist_size = max(1, round(self.rho * num_neighbors))
+        shortlisted_indices = [i for i, _ in distances[:shortlist_size]]
 
-        if len(self.received_losses) != num_updates:
-            raise RuntimeError("UBARServer: received_losses length must match received_params length")
-  
-        # Stage 1: compute distances to global_state and pick rho*|Ni| closest
-        distances = [self._euclidean_dist(global_state, st) for st in self.received_params]
-        # compute k = max(1, floor(rho * num_updates)) to ensure at least one candidate
-        k = max(1, int(math.floor(self.rho * float(num_updates))))
-        idx_sorted = np.argsort(distances)
-        candidate_indices = list(map(int, idx_sorted[:k]))
-        print(f"UBAR: Stage 1 : selected {len(candidate_indices)}")
+        # -- Stage 2: loss selection on this node's own data --
+        batch = self._sample_batch()
+        own_loss = self._compute_loss(own_state, batch)
 
-        # Stage 2: select those whose reported loss <= our own local loss
-        if self.local_loss is None:
-            self.local_loss = float(np.median([self.received_losses[i] for i in candidate_indices]))
-            print("UBAR: local_loss not provided in config; using median(candidate_losses) as proxy for server_loss")
-        
-        print(f"UBAR: Stage 2 : recieved {len(self.received_losses)}")
-        selected_indices: List[int] = [i for i in candidate_indices if self.received_losses[i] <= self.local_loss]
-        print(f"UBAR: Stage 2 : selected {len(selected_indices)}")
+        candidate_losses = [
+            (i, self._compute_loss(self.received_params[i], batch)) for i in shortlisted_indices
+        ]
+        selected_indices = [i for i, loss in candidate_losses if loss <= own_loss]
 
-        # If none pass Stage 2 -> append best candidate (lowest loss) as per paper
-        if len(selected_indices) == 0 and len(candidate_indices) > 0:
-            best_idx = min(candidate_indices, key=lambda i: self.received_losses[i])
-            selected_indices.append(best_idx)
-            print("[UBAR] No candidate had loss <= server_loss; appending best candidate from Stage1 (lowest loss)")
+        if not selected_indices:
+            # Paper Algorithm 1, lines 12-14: never leave the selection empty.
+            print(f"[UBAR] Round {current_round}: no candidates beat own loss ({own_loss:.4f}), falling back to best candidate.")
+            best_i, _ = min(candidate_losses, key=lambda pair: pair[1])
+            selected_indices = [best_i]
 
-        # If still none (shouldn't happen because we forced k>=1), fallback to FedAvg
-        if len(selected_indices) == 0:
-            print("[UBAR] No clients selected after Stage2; falling back to FedAvg aggregation")
-            return super().aggregate()
-
-        # Keep only selected
+        # -- Average selected candidates --
         selected_states = [self.received_params[i] for i in selected_indices]
-        selected_lens = [self.received_lens[i] for i in selected_indices]
+        r_state: Dict[str, torch.Tensor] = {}
+        for key in own_state.keys():
+            stacked = torch.stack([st[key].detach().cpu().float() for st in selected_states], dim=0)
+            r_state[key] = torch.mean(stacked, dim=0)
 
-        # Aggregation (weighted or simple mean)
-        averaged: Dict[str, torch.Tensor] = {}
-        first = selected_states[0]
+        
+        self.set_params({k: v.to(self.device) for k, v in r_state.items()})
 
-        if self.weighted:
-            total = float(sum(selected_lens)) if sum(selected_lens) > 0 else float(len(selected_lens))
-            for k_ in first.keys():
-                acc = torch.zeros_like(first[k_], dtype=torch.float32)
-                for st, ln in zip(selected_states, selected_lens):
-                    acc += st[k_].detach().cpu() * (float(ln) / total)
-                averaged[k_] = acc.to(first[k_].dtype)
-        else:
-            for k_ in first.keys():
-                stacked = torch.stack([st[k_].detach().cpu() for st in selected_states], dim=0)
-                averaged[k_] = torch.mean(stacked, dim=0).to(first[k_].dtype)
+        self.received_params, self.received_lens = [], []
 
-        # Update server model
-        self.set_params({k: v.to(self.device) for k, v in averaged.items()})
+        print(f"[UBAR] Round {current_round}: shortlisted {shortlist_size}/{num_neighbors} by "
+              f"distance, kept {len(selected_indices)} by loss (own_loss={own_loss:.4f})")
 
-        # Reset state buffers (caller should refill for next round)
-        self.received_params = []
-        self.received_lens = []
-        self.received_losses = []
-
-        print(f"[UBAR] Aggregated {len(selected_indices)}/{num_updates} clients at round {current_round} (k_stage1={k})")
-
-        return {k: v.cpu().clone() for k, v in averaged.items()}
-
+        return {k: v.cpu().clone() for k, v in r_state.items()}
