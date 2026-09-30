@@ -2,6 +2,22 @@
 
 This repository provides implementations of state-of-the-art defense mechanisms for **Decentralized Federated Learning (DFL)** and **Federated Learning (FL)** against Byzantine and backdoor attacks.
 
+| Defense                 | Reference                                  |
+| ----------------------- | ------------------------------------------ |
+| UBAR                    | Guo et al., **TCSVT'22** [5]               |
+| SCCLIP                  | He et al., **arXiv'22** [19]               |
+| BALANCE                 | Fang et al., **CCS'24** [22]               |
+| ABALANCE                | Fang et al., **CCS'24** [22]               |
+| DFL-Dual                | Sun et al., **CVPR'24** [21]               |
+| SENTINEL                | Feng et al., **ECAI'24** [92]              |
+| DeepSight               | Rieger et al., **arXiv'22** [24]           |
+| FLAME                   | Nguyen et al., **USENIX Security'22** [23] |
+| SPP                     | Wang et al., **TIFS'25** [46]              |
+| MMAD                    | Huang et al., **ICCV'23** [25]             |
+| Norm Clipping / Weak-DP | Sun et al., **arXiv'19** [47]              |
+| Multi-Krum              | Blanchard et al., **NeurIPS'17** [70]      |
+| Trimmed Mean            | Yin et al., **ICML'18** [49]               |
+| Coordinate-wise Median  | Yin et al., **ICML'18** [49]               |
 
 ---
 
@@ -15,10 +31,10 @@ These methods are designed to operate in decentralized settings where each parti
 
 UBAR performs robust neighbor selection by:
 
-- Computing pairwise distances between received models.
-- Selecting the closest neighbors.
-- Removing updates that significantly increase the local validation loss.
-- Aggregating the remaining updates using **Trimmed Mean**.
+* Computing pairwise distances between received models.
+* Selecting the closest neighbors.
+* Removing updates that significantly increase the local validation loss.
+* Aggregating the remaining updates using **Trimmed Mean**.
 
 ---
 
@@ -27,7 +43,6 @@ UBAR performs robust neighbor selection by:
 **Reference:** He et al., 2022
 
 SCCLIP limits the magnitude of incoming updates by clipping every received model so that its norm does not exceed the norm of the client's own update.
-
 
 ---
 
@@ -39,11 +54,9 @@ BALANCE performs a model acceptance test before aggregation.
 
 A received model is accepted only if its Euclidean distance from the local model remains below a predefined exponentially decaying threshold:
 
-\[
-d_{ij} \le \tau
-\]
-
-
+$$
+d_{ij} \leq \tau.
+$$
 
 ---
 
@@ -55,11 +68,11 @@ ABALANCE extends BALANCE by replacing the fixed threshold with an adaptive one.
 
 Main improvements:
 
-- Adaptive threshold based on the **median** of received distances.
-- Robust dispersion estimation using **Median Absolute Deviation (MAD)**.
-- Temporal consistency by constraining threshold changes using the previous communication round.
-- More tolerant during early training on highly non-IID data.
-- More resistant to stealthy backdoor attacks.
+* Adaptive threshold based on the **median** of received distances.
+* Robust dispersion estimation using **Median Absolute Deviation (MAD)**.
+* Temporal consistency by constraining threshold changes using the previous communication round.
+* More tolerant during early training on highly non-IID data.
+* More resistant to stealthy backdoor attacks.
 
 ---
 
@@ -69,8 +82,8 @@ Main improvements:
 
 DFL-Dual jointly analyzes updates in:
 
-- **Model space**
-- **Data space**
+* **Model space**
+* **Data space**
 
 The defense:
 
@@ -79,6 +92,24 @@ The defense:
 3. Measures Wasserstein distances between reconstructed datasets.
 4. Combines both metrics into a unified similarity score.
 5. Performs two-stage clustering to identify trusted participants before aggregation.
+
+---
+
+## SENTINEL
+
+**Reference:** Feng et al., 2024
+
+SENTINEL is a decentralized aggregation defense that evaluates received neighbor models using both **model similarity** and **validation performance**.
+
+The defense:
+
+1. Computes layer-wise cosine similarity between the local model and received neighbor models.
+2. Evaluates the candidate models using a held-out validation set.
+3. Filters or weights received models based on their similarity and validation loss.
+4. Rescales accepted updates according to layer-wise norms.
+5. Aggregates the resulting weighted updates together with the local model.
+
+SENTINEL is designed specifically for decentralized federated learning, where each client independently evaluates and aggregates information received from its neighbors.
 
 ---
 
@@ -94,9 +125,9 @@ The following centralized FL defenses have been adapted for decentralized aggreg
 
 DeepSight is a clustering defense that analyzes client updates using multiple feature spaces, including:
 
-- NEUP
-- Decision Difference (DDif)
-- Cosine similarity
+* NEUP
+* Decision Difference (DDif)
+* Cosine similarity
 
 Consensus clustering is then used to identify malicious updates before robust aggregation.
 
@@ -110,10 +141,10 @@ FLAME detects malicious updates through clustering of last-layer model parameter
 
 The defense then:
 
-- Removes suspicious clusters
-- Clips update norms
-- Injects adaptive Gaussian noise
-- Aggregates the remaining updates using FedAvg
+* Removes suspicious clusters.
+* Clips update norms.
+* Injects adaptive Gaussian noise.
+* Aggregates the remaining updates using FedAvg.
 
 ---
 
@@ -123,8 +154,8 @@ The defense then:
 
 SPP randomly samples subsets of model parameters and compares received updates against the local reference model using similarity metrics such as:
 
-- Cosine similarity
-- Euclidean distance
+* Cosine similarity
+* Euclidean distance
 
 Only sufficiently similar updates participate in aggregation.
 
@@ -136,9 +167,9 @@ Only sufficiently similar updates participate in aggregation.
 
 MMAD combines multiple distance metrics:
 
-- L1 distance
-- L2 distance
-- Cosine distance
+* L1 distance
+* L2 distance
+* Cosine distance
 
 These features are transformed into covariance-aware anomaly scores that rank participants according to their likelihood of being malicious.
 
@@ -176,11 +207,13 @@ Trimmed Mean performs coordinate-wise robust aggregation by:
 
 This reduces the influence of Byzantine updates.
 
+---
+
 ## Coordinate-wise Median
 
 **Reference:** Yin et al., 2018
 
-The Coordinate-wise Median defense performs robust aggregation by computing the median of each model parameter independently across all received updates.
+Coordinate-wise Median performs robust aggregation by computing the median of each model parameter independently across all received updates.
 
 For every parameter coordinate:
 

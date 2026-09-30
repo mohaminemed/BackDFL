@@ -5,18 +5,16 @@
   <b>BackDFL</b> is a modular, extensible, and configuration-driven framework for systematically evaluating backdoor attacks and defenses in Federated Learning (FL) and Decentralized Federated Learning (DFL).
 </p>
 
-<p align="center">
-  <a href="https://arxiv.org/abs/2608.21137">📄 Paper</a> •
-  <a href="#getting-started">🚀 Getting Started</a> •
-  <a href="#attacks-and-defenses">🛡️ Attacks & Defenses</a> •
-  <a href="#license">⚖️ License</a>
-</p>
 
 <p align="center">
+  <a href="https://arxiv.org/abs/2608.21137">
+    <img src="https://img.shields.io/badge/📄_Paper-arXiv-B31B1B?style=for-the-badge&logo=arxiv" alt="Paper">
+  </a>
   <a href="https://github.com/mohaminemed/BackDFL">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License">
   </a>
 </p>
+
 
 ---
 
@@ -227,7 +225,7 @@ The target classes are fixed per dataset to ensure consistent and reproducible e
 
 For datasets with semantic class labels, the selected targets correspond to concrete, well-defined classes rather than being chosen dynamically during evaluation. In particular:
 
-* **GTSRB — class 7 (`100 km/h speed limit`)**: this is a visually well-defined traffic-sign category with a clear semantic interpretation. Using a specific speed-limit sign provides a reproducible targeted misclassification objective while remaining representative of targeted attacks against safety-relevant visual recognition tasks.
+* **GTSRB — class 7 (`100 km/h speed limit`)**: The 100 km/h speed-limit sign is selected as the target because misclassifying another sign as a higher speed limit represents a safety-relevant failure mode in traffic-sign recognition.
 * **NSL-KDD and UNSW-NB15 — class 0 (`normal traffic`)**: targeting the benign/normal class evaluates whether a backdoor can cause malicious or anomalous traffic to be classified as legitimate traffic. This is particularly relevant for intrusion-detection settings because the resulting attack represents a **false-negative classification scenario** rather than simply confusing one attack category with another.
 * **HAR — `walking upstairs`**: the selected activity provides a concrete target label in a multi-class human-activity recognition task.
 * **CIFAR-10 / CIFAR-100 / MNIST / FashionMNIST**: targets are fixed class indices to provide a common and reproducible targeted-backdoor setting across experiments.
