@@ -1,6 +1,6 @@
 # Defense Implementations
 
-This repository provides implementations of state-of-the-art defense mechanisms for **Decentralized Federated Learning (DFL)** and **Federated Learning (FL)** against Byzantine and backdoor attacks.
+This repository provides implementations of state-of-the-art CFL/DFL defense mechanisms.
 
 | Defense                 | Reference                                  |
 | ----------------------- | ------------------------------------------ |
