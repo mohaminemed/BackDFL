@@ -22,7 +22,7 @@
 
 ## 1. Overview
 
-BackDFL provides a unified experimental framework for benchmarking backdoor attacks and defenses under configurable FL and DFL settings.
+BackDFL provides a unified experimental framework for benchmarking backdoor attacks and defenses under configurable CFL and DFL settings.
 
 The framework combines:
 
@@ -45,18 +45,17 @@ The framework is implemented in **Python** using **PyTorch**.
 
 ### Modular Design
 
-BackDFL separates the main components of an FL/DFL experiment:
+BackDFL separates the main components of a CFL/DFL experiment:
 
 ```text
 Configuration
     │
-    ├── Dataset / Partitioning
+    ├── Dataset 
     ├── Model
     ├── Training Flow
     ├── Attack
     ├── Defense
-    ├── Communication Topology
-    └── Evaluation
+    └── Communication Topology
 ```
 
 Each component can be independently configured or extended without modifying the rest of the experimental pipeline.
@@ -70,10 +69,10 @@ Experiments are specified through YAML configuration files, including parameters
 * number of communication rounds;
 * dataset and model;
 * attack and attack window;
-* defense;
+* defense and its parameters ;
 * data heterogeneity;
 * communication topology;
-* optimizer and training parameters.
+* training parameters.
 
 This allows the same experimental pipeline to be reused across different attack, defense, dataset, and topology combinations.
 
