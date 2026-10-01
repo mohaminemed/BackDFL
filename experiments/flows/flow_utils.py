@@ -407,24 +407,24 @@ def prepare_environment(config):
     # scaling, tdfed. Image-specific attacks (a3fl, iba, dba, plain patch) rely
     # on spatial/pixel structure that these datasets don't have.
     if config.get('dataset') == "har":
-        if attack in ['badnets', 'neurotoxin', 'scaling', 'tdfed']:
+        if attack in ['badnets', 'neurotoxin', 'scaling']:
              trigger = HARTrigger( trigger_features=[0, 10, 20],
                                       trigger_value=3.0)  
 
     elif config.get('dataset') == "nslkdd":
-        if attack in ['badnets', 'neurotoxin', 'scaling', 'tdfed']:
+        if attack in ['badnets', 'neurotoxin', 'scaling']:
             trigger = NSLKDDTrigger(trigger_features=(0, 4, 5, 22, 23),
                                      trigger_value=3.0,
                                      num_numeric=NSLKDDAdapter.num_numeric)
 
     elif config.get('dataset') == "unsw_nb15":
-        if attack in ['badnets', 'neurotoxin', 'scaling', 'tdfed']:
+        if attack in ['badnets', 'neurotoxin', 'scaling']:
             trigger = UNSWTrigger(trigger_features=(0, 1, 2, 3),
                                    trigger_value=3.0,
                                    num_numeric=adapter.num_numeric)
 
     elif config.get('dataset') == "nbaiot":
-        if attack in ['badnets', 'neurotoxin', 'scaling', 'tdfed']:
+        if attack in ['badnets', 'neurotoxin', 'scaling']:
             trigger = NBaIoTTrigger(trigger_features=(0, 1, 2), trigger_value=3.0)
 
     elif config.get('attack', 'none') != 'none':
