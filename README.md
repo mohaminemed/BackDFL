@@ -170,16 +170,16 @@ The benchmark therefore covers defenses based on:
 
 BackDFL reports multiple complementary metrics to characterize both utility and attack effectiveness.
 
-### Task Performance
+### DFL Task Performance
 
-* **Min.ACC** — minimum test accuracy observed during the experiment.
-* **Avg.ACC** — average test accuracy over the evaluated rounds.
+* **Min.ACC** — minimum test accuracy observed accross benign clients.
+* **Avg.ACC** — average test accuracy accross benign clients.
 
-### Backdoor Effectiveness
+### DFL Backdoor Effectiveness
 
 * **Max.ASR** — maximum attack success rate observed during the attack/evaluation period.
-* **Final.ASR** — attack success rate at the end of the experiment.
-* **Durability** — number of rounds required for ASR to fall below a specified threshold.
+* **Final.ASR** — maximum attack success rate at the end of the experiment.
+* **Durability** — a.k.a Lifespan: number of clean rounds (attack is off) required for ASR to fall below a specified threshold (e.g., 0.5).
 
 ### DFL Topology
 
@@ -188,7 +188,6 @@ For decentralized experiments, BackDFL can additionally record graph-level prope
 * node degree;
 * graph connectivity;
 * spectral gap;
-* communication topology.
 
 ### Experiment Artifacts
 
