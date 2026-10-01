@@ -95,11 +95,11 @@ The defense:
 
 ---
 
-## SENTINEL
+## Sentinel
 
 **Reference:** Feng et al., 2024
 
-SENTINEL is a decentralized aggregation defense that evaluates received neighbor models using both **model similarity** and **validation performance**.
+Sentinel is a decentralized aggregation defense that evaluates received neighbor models using both **model similarity** and **validation performance**.
 
 The defense:
 
@@ -109,7 +109,6 @@ The defense:
 4. Rescales accepted updates according to layer-wise norms.
 5. Aggregates the resulting weighted updates together with the local model.
 
-SENTINEL is designed specifically for decentralized federated learning, where each client independently evaluates and aggregates information received from its neighbors.
 
 ---
 

@@ -138,7 +138,7 @@ These methods are designed for decentralized peer-to-peer aggregation:
 | **BALANCE**  | $\ell_2$ distance                         | Hard accept/reject                    | Mean of accepted updates |
 | **ABALANCE** | $\ell_2$ distance + temporal statistics   | Adaptive accept/reject                | Mean of accepted updates |
 | **DFL-Dual** | Model-space + data-space distances        | Two-stage clustering                  | Selected contributors    |
-| **SENTINEL** | Cosine similarity + local validation loss | Filtering, weighting, normalization   | Weighted aggregation     |
+| **Sentinel** | Cosine similarity + local validation loss | Filtering, weighting, normalization   | Weighted aggregation     |
 
 ### FL Backdoor Defenses Adapted to DFL
 
