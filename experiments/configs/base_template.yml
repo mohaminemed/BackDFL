@@ -14,7 +14,7 @@ num_parallel_clients: 20          # >1 = parallel training, 1 = serial training
 client_selection_fraction: 1.0    # centralized: fraction of clients; decentralized: all (num_clients)
 num_rounds: 100
 local_epochs: 5
-iid: "dirichlet"                  # data partitioning scheme
+iid: "dirichlet"                  # iid | dirichlet  -- data partitioning strategy; if dirichlet, set dirichlet_alpha below
 dirichlet_alpha: 0.5
 batch_size: 32
 test_batch_size: 256
