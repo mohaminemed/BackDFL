@@ -103,7 +103,7 @@ BackDFL implements several representative backdoor strategies covering different
 | ----------------- | ---------------------------------------------------- | -------------------------------------------------- | ------------------- |
 | **BadNets**       | Fixed input-space trigger                            | Naive poisoned training                            | Configurable window |
 | **DBA**           | Distributed trigger components                       | Naive poisoned training                            | Configurable window |
-| **A3FL**          | Optimized trigger using PGD and a hardened surrogate | Naive poisoned training                            | Configurable window |
+| **A3FL**          | Optimized trigger using PGD and a hardened surrogate | Naive or Scaled model update                       | Configurable window |
 | **IBA**           | Learned input-conditioned trigger generator          | Naive poisoned training                            | Configurable window |
 | **Neurotoxin**    | Fixed trigger + parameter-importance masking         | Suppresses gradients on high-importance parameters | Configurable window |
 | **Model Scaling** | Fixed trigger                                        | Scaled model update / model replacement            | One-shot            |
@@ -228,11 +228,10 @@ The target classes are fixed per dataset to ensure consistent and reproducible e
 For datasets with semantic class labels, the selected targets correspond to concrete, well-defined classes rather than being chosen dynamically during evaluation. In particular:
 
 * **GTSRB — class 7 (`100 km/h speed limit`)**: The 100 km/h speed-limit sign is selected as the target because misclassifying another sign as a higher speed limit represents a safety-relevant failure mode in traffic-sign recognition.
-* **NSL-KDD and UNSW-NB15 — class 0 (`normal traffic`)**: targeting the benign/normal class evaluates whether a backdoor can cause malicious or anomalous traffic to be classified as legitimate traffic. This is particularly relevant for intrusion-detection settings because the resulting attack represents a **false-negative classification scenario** rather than simply confusing one attack category with another.
+* **NSL-KDD and UNSW-NB15 — class 0 (`normal traffic`)**: targeting the benign/normal class evaluates whether a backdoor can cause malicious or anomalous traffic to be classified as legitimate traffic. The resulting attack represents a **false-negative classification scenario**, not simply confusing one attack category with another.
 * **HAR — `walking upstairs`**: the selected activity provides a concrete target label in a multi-class human-activity recognition task.
 * **CIFAR-10 / CIFAR-100 / MNIST / FashionMNIST**: targets are fixed class indices to provide a common and reproducible targeted-backdoor setting across experiments.
 
-The target class is therefore treated as an **experimental parameter**, not as a property that inherently makes one dataset or class more vulnerable than another.
 
 ---
 
