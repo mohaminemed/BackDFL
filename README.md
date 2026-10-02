@@ -96,18 +96,20 @@ The framework records experiment outputs and logs, making it possible to reprodu
 
 ## Backdoor Attacks
 
-BackDFL implements several representative backdoor strategies covering different attack mechanisms, including static triggers, distributed triggers, optimized triggers, generative triggers, gradient manipulation, and model replacement.
+BackDFL implements several representative backdoor strategies covering different attack mechanisms, including static triggers, distributed triggers, optimized triggers, generative triggers, gradient manipulation, model replacement, and layer-targeted attacks.
 
-| Attack            | Trigger / Mechanism                                  | Update Manipulation                                | Activation          |
+| Attack | Trigger / Mechanism | Update Manipulation | Activation |
 | ----------------- | ---------------------------------------------------- | -------------------------------------------------- | ------------------- |
-| **BadNets**       | Fixed input-space trigger                            | Naive poisoned training                            | Configurable window |
-| **DBA**           | Distributed trigger components                       | Naive poisoned training                            | Configurable window |
-| **A3FL**          | Optimized trigger using PGD and a hardened surrogate | Naive or Scaled model update                       | Configurable window |
-| **IBA**           | Learned input-conditioned trigger generator          | Naive poisoned training                            | Configurable window |
-| **Neurotoxin**    | Fixed trigger + parameter-importance masking         | Suppresses gradients on high-importance parameters | Configurable window |
-| **Model Scaling** | Fixed trigger                                        | Scaled model update / model replacement            | One-shot            |
+| **BadNets** | Fixed input-space trigger | Naive poisoned training | Configurable window |
+| **DBA** | Distributed trigger components | Naive poisoned training | Configurable window |
+| **A3FL** | Optimized trigger using PGD and a hardened surrogate | Naive or scaled model update | Configurable window |
+| **IBA** | Learned input-conditioned trigger generator | Naive poisoned training | Configurable window |
+| **Neurotoxin** | Fixed trigger + parameter-importance masking | Suppresses gradients on high-importance parameters | Configurable window |
+| **LayerPoison** | Fixed trigger + backdoor-critical layer selection via LSA | Selective layer-wise model poisoning | Configurable window |
+| **LayerFlip** | Fixed trigger + backdoor-critical layer selection via LSA | Sign flipping on critical layers | Configurable window |
+| **Model Scaling** | Fixed trigger | Scaled model update / model replacement | One-shot |
 
-The attacks can be configured with parameters such as poisoning ratio, target class, malicious training epochs, attack window, trigger configuration, and update scaling.
+The attacks can be configured with parameters such as poisoning rate, target class, malicious training epochs, attack window, trigger configuration, and update scaling.
 
 ### Attack Dimensions
 
