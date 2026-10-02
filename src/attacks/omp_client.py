@@ -3,11 +3,12 @@ from typing import Dict, Any, Optional
 from copy import deepcopy
 
 from ..fl.baseclient import BenignClient
+from .aggregation.mixing import AttackerAggregationMixin
 
 
-class OMPClient(BenignClient):
+class OMPClient(AttackerAggregationMixin, BenignClient):
     """
-    Implementation of NDSS'21 manipulating the byzantine: optimized model poisoning attack.
+    Simplified DFL-compatible Implementation of NDSS'21 manipulating the byzantine: optimized model poisoning attack.
 
     Core idea:
     - Estimate benign update

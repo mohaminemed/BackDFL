@@ -10,11 +10,11 @@ experiment_name: "{attack}_{defense}_{dataset}_{flow}"
 flow: "{flow}"                    # centralized | decentralized
 dataset: "{dataset}"
 num_clients: 20
-num_parallel_clients: 20          # >1 = parallel training, 1 = serial training
+num_parallel_clients: 10          # >1 = parallel training, 1 = serial training
 client_selection_fraction: 1.0    # centralized: fraction of clients; decentralized: all (num_clients)
 num_rounds: 100
 local_epochs: 5
-iid: "dirichlet"                  # iid | dirichlet  -- data partitioning strategy; if dirichlet, set dirichlet_alpha below
+iid: "dirichlet"                        # iid | dirichlet  -- data partitioning strategy; if dirichlet, set dirichlet_alpha below
 dirichlet_alpha: 0.5
 batch_size: 32
 test_batch_size: 256
@@ -24,11 +24,11 @@ mix_ratio: 0.5
 net_churn_rho: 0.0
 
 # --- Checkpointing ---------------------------------------------------------
-#pretrained_path: experiments/models/neurotoxin_saga_nslkdd_decentralized_30_non_iid.pth
+#pretrained_path: experiments/models/none_none_nslkdd_decentralized_30_non_iid.pth
 #start_round: 31
 save_model: false
 save_model_path: "experiments/models/{attack}_{defense}_{dataset}_{flow}.pth"
-save_model_rounds: [30, 60, 100]
+save_model_rounds: [30]
 
 
 # --- Statistics Logging ------------------------------------------------------
@@ -41,16 +41,16 @@ statistic_analysis_rounds: 35
 attack: "{attack}"                # none | badnets | scaling | neurotoxin | a3fl | dba | iba
 num_malicious: 3
 malicious_strategy: "random"      # random | first (first = clustered)
-target_class: 0                   # 1 for HAR; 0: "normal" for NSLKDD and UNSW-NB15; 7: "speed limit" for GTSRB; 7: for other CV datasets
+target_class: 1                   # 1 for HAR; 0: "normal" for NSLKDD and UNSW-NB15; 7: "speed limit" for GTSRB; 7: for other CV datasets
                                   # if the target class is common in the clean data, the ASR may be high
                                    
-poisoning_rate: 0.25
-attack_start_round: 30
-attack_end_round: 50             # scaling (one-shot): start == end; BadNets (whole training): -1
+
+attack_start_round: 31
+attack_end_round: 50              # scaling (one-shot): start == end; BadNets (whole training): -1
 attack_mode: "continuous"         # continuous | sporadic
 
 # --- Aggregation Attack Parameters -----------------------------------------
-attack_type: "biased_mix"     # scale_update | biased_mix | align_neighbor
+attack_type: "biased_mix"         # scale_update | biased_mix | align_neighbor
                                   # scale_update: scale the malicious update to maximize its impact on the global model
                                   # biased_mix: mix malicious updates with benign updates to bias the aggregation
                                   # align_neighbor: align the pre train malicious update with a specific neighbor's update
@@ -61,15 +61,20 @@ stealth_after: 40
 stealth_ratio: 0.9
 
 # --- Attack-specific Parameters --------------------------------------------
-scale_factor: 2.0
-malicious_epochs: 10
+poisoning_rate: 0.25           # poisoning fraction
+scale_factor: 2.0              # shared by: Scaling, A3FL
+malicious_epochs: 10           # shared by all attacks except BadNets (which uses local_epochs)
 mask_k_percent: 0.05
-trigger_epochs: 10
-trigger_lr: 0.005
+trigger_epochs: 10             # shared by: IBA/A3FL trigger
+trigger_lr: 0.005              # shared by: IBA/A3FL trigger optimizer
 
-omp_gamma_init: 2.0
-omp_tau: 1.0e-3
-omp_perturbation: "sign"
+# --- Layer-Critical (LP / LF) Attack Parameters ----------------------------
+tau: 0.95                      # BC-layer identification threshold (paper: 0.95)
+lam: 1.0                       # stealthiness knob, paper: 1.0 on CIFAR-10/CIFAR-100, 0.5 on Fashion-MNIST
+bc_identification_interval: 1  # re-run Layer Substitution Analysis every N attack rounds (1 = every round)
+benign_epochs: 5               # E = 2 local epochs for benign 
+local_lr: 0.01                  # local learning rate — paper: 0.1 on CIFAR-10/CIFAR-100, 0.01 on Fashion-MNIST/N-BaIoT
+
 
 # --- Defense Parameters ----------------------------------------------------
 defense: "{defense}"

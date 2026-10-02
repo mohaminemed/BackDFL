@@ -1,6 +1,6 @@
 # Attack Implementations
 
-This folder provides implementations of established **backdoor attacks (BAs)** for **Federated Learning (FL)**.
+This folder provides implementations of established *targeted* backdoor attacks (BAs) for Federated Learning (FL). It also includes established *untargeted* poisoning attacks to support broader evaluation of new defenses, including model poisoning attacks (MPAs) such as Krum, Trim, Gaussian, and OMP, and data poisoning attacks (DPAs) such as label flipping and feature poisoning.
 
 | Attack                      | Reference                               |
 | --------------------------- | --------------------------------------- |

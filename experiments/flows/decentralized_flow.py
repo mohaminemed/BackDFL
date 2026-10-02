@@ -8,6 +8,7 @@ import pickle
 
 from .topology import create_topology
 from .flow_utils import evaluate_model_accuracy, evaluate_asr, recreate_asr_test_loader, load_clean_model
+from src.attacks.aggregation.mixing import AttackerAggregationMixin
 
 
 def _get_prev_param_or_zero(prev_map, client_id, key, ref_tensor, device):
@@ -278,7 +279,7 @@ def run_decentralized_flow(env, config, logger):
 
             neighbor_updates = [c[1] for c in collected]
 
-            if client.__class__.__name__ in ('NeurotoxinClient', 'A3FLClient', 'BadNetsClient', 'DBAClient', 'IBAClient', 'ScalingAttackClient') and current_round >= config.get('attack_start_round', 0):
+            if isinstance(client, AttackerAggregationMixin) and current_round >= config.get('attack_start_round', 0):
                 try:
                     
                     client.aggregate_from_neighbors_attacker(neighbor_updates, config=config, prev_global_params_per_client=prev_model_params_per_client, round_idx=current_round)

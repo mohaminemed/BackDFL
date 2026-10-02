@@ -1,8 +1,8 @@
-import copy
+
 import random
 import torch
 import numpy as np
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 import os
 from torch.utils.data import Subset
 
@@ -40,7 +40,11 @@ from src.attacks.scaling_client import ScalingAttackClient
 from src.attacks.neurotoxin_client import NeurotoxinClient
 from src.attacks.a3fl_client import A3FLClient
 from src.attacks.dba_client import DBAClient
-from src.attacks.iba_client import IBAClient    
+from src.attacks.iba_client import IBAClient
+from src.attacks.layercritical_client import LPClient
+from src.attacks.layercritical_client import LFClient
+
+
 from src.attacks.omp_client import OMPClient
 
 
@@ -49,6 +53,7 @@ from src.attacks.triggers.patch import PatchTrigger
 from src.attacks.triggers.a3fl import A3FLTrigger
 from src.attacks.triggers.distributed import DBATrigger
 from src.attacks.triggers.iba import IBATrigger
+
 
 
 from src.attacks.triggers.har_trigger import HARTrigger
@@ -308,7 +313,30 @@ def build_clients(client_loaders: Dict[int, object],
                                    poison_fraction=config.get('poisoning_rate', 0.1),
                                    malicious_epochs=config.get('malicious_epochs', 10))
 
-                                     
+            elif attack_type == 'layerpoison':
+                client = LPClient(**base_kwargs, **malicious_kwargs, trigger=trigger,
+                                 attack_start_round=config.get('attack_start_round', 0),
+                                 attack_end_round=config.get('attack_end_round', -1),
+                                 poison_rate=config.get('poisoning_rate', 0.25),  # PDR = 50% (paper default)
+                                 malicious_epochs=config.get('malicious_epochs', 10),
+                                 tau=config.get('tau', 0.95),
+                                 lam=config.get('lam', 1.0),
+                                 bc_identification_interval=config.get('bc_identification_interval', 1),
+                                 benign_epochs=config.get('benign_epochs', 5),
+                                 local_lr=config.get('local_lr', 0.01)) 
+            elif attack_type == 'layerflip':
+                client = LFClient(**base_kwargs, **malicious_kwargs, trigger=trigger,
+                                 attack_start_round=config.get('attack_start_round', 0),
+                                 attack_end_round=config.get('attack_end_round', -1),
+                                 poison_rate=config.get('poisoning_rate', 0.25),  # PDR = 50% (paper default)
+                                 malicious_epochs=config.get('malicious_epochs', 10),
+                                 tau=config.get('tau', 0.95),
+                                 lam=config.get('lam', 1.0),
+                                 bc_identification_interval=config.get('bc_identification_interval', 1),
+                                 benign_epochs=config.get('benign_epochs', 5),
+                                 local_lr=config.get('local_lr', 0.01),
+                                 flip_mode='flip')    
+                 
             elif attack_type == 'dba':
                 # If trigger is a list indexed by malicious-order, map to the position in malicious_ids
                 try:
@@ -328,14 +356,19 @@ def build_clients(client_loaders: Dict[int, object],
                 client = TrimAttackClient(**base_kwargs, scale = config.get('trim_scale', 5.0))     
             elif attack_type == 'gauss':
                 client = GaussianAttackClient(**base_kwargs, variance = config.get('gauss_variance', 200))  
-            elif attack_type == 'omp':
-                client = OMPClient(**base_kwargs, attack_start_round=config.get('attack_start_round', 0),
+            elif attack_type == 'label_flip':
+                client = LabelFlipClient(**base_kwargs, flip_to=config.get('label_flip_to', 0))
+            elif attack_type == 'feature':
+                client = FeatureAttackClient(**base_kwargs, feature=config.get('feature_attack_feature', 0),
+                                             value=config.get('feature_attack_value', 1.0))    
+            elif attack_type == 'omp':    
+                client = OMPClient(**base_kwargs,
+                                   attack_start_round=config.get('attack_start_round', 0),
                                    attack_end_round=config.get('attack_end_round', -1),
-                                   gamma_init=config.get('omp_gamma_init', 1.5),
+                                   gamma_init=config.get('omp_gamma_init', 2.0),
                                    tau=config.get('omp_tau', 1e-3),
                                    perturbation=config.get('omp_perturbation', 'sign'),
-                                   malicious_epochs=config.get('malicious_epochs', 5))
-                      
+                                   malicious_epochs=config.get('malicious_epochs', 5))   
             else:
                 client = BenignClient(**base_kwargs)
         
@@ -407,30 +440,30 @@ def prepare_environment(config):
     # scaling, tdfed. Image-specific attacks (a3fl, iba, dba, plain patch) rely
     # on spatial/pixel structure that these datasets don't have.
     if config.get('dataset') == "har":
-        if attack in ['badnets', 'neurotoxin', 'scaling']:
+        if attack in ['badnets', 'neurotoxin', 'scaling', 'layerpoison', 'layerflip']:
              trigger = HARTrigger( trigger_features=[0, 10, 20],
-                                      trigger_value=3.0)  
+                                      trigger_value=3.0)
 
     elif config.get('dataset') == "nslkdd":
-        if attack in ['badnets', 'neurotoxin', 'scaling']:
+        if attack in ['badnets', 'neurotoxin', 'scaling', 'layerpoison', 'layerflip']:
             trigger = NSLKDDTrigger(trigger_features=(0, 4, 5, 22, 23),
                                      trigger_value=3.0,
                                      num_numeric=NSLKDDAdapter.num_numeric)
 
     elif config.get('dataset') == "unsw_nb15":
-        if attack in ['badnets', 'neurotoxin', 'scaling']:
+        if attack in ['badnets', 'neurotoxin', 'scaling', 'layerpoison', 'layerflip']:
             trigger = UNSWTrigger(trigger_features=(0, 1, 2, 3),
                                    trigger_value=3.0,
                                    num_numeric=adapter.num_numeric)
 
     elif config.get('dataset') == "nbaiot":
-        if attack in ['badnets', 'neurotoxin', 'scaling']:
+        if attack in ['badnets', 'neurotoxin', 'scaling', 'layerpoison', 'layerflip']:
             trigger = NBaIoTTrigger(trigger_features=(0, 1, 2), trigger_value=3.0)
 
     elif config.get('attack', 'none') != 'none':
         trigger_pos = (image_size[0] - 4, image_size[1] - 4)
         if attack == 'a3fl':
-                trigger = A3FLTrigger(
+            trigger = A3FLTrigger(
                     position=trigger_pos, size=(3, 3),
                     in_channels=in_channels, image_size=image_size,
                 trigger_epochs=config.get('trigger_epochs', 5),
@@ -453,7 +486,9 @@ def prepare_environment(config):
                            patch_size=(4, 4), color=(1.0,)*in_channels)
                 for i in range(config.get('num_malicious', 0))
             ]
-         
+    
+        elif attack in ['layerpoison', 'layerflip']:
+            trigger = PatchTrigger(position=trigger_pos, size=(3, 3), color=(1.0,)*in_channels) 
         else:
             trigger = PatchTrigger(position=trigger_pos, size=(3, 3), color=(1.0,)*in_channels)
 
@@ -469,7 +504,7 @@ def prepare_environment(config):
     server_model = model_cls().to(device)
 
     backdoor_loader_for_eval = None
-    if config.get('attack', 'none') not in ['none', 'krum', 'trim', 'gauss', 'omp']:
+    if config.get('attack', 'none') not in ['none', 'krum', 'trim', 'gauss', 'omp', 'label_flip', 'feature']:
         eval_trigger_for_dba = PatchTrigger(
             position=(image_size[0]-5, image_size[1]-5),
             size=(4, 4), color=(1.0,)*in_channels
