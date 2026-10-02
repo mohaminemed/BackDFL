@@ -9,7 +9,9 @@ This folder provides implementations of established *targeted* backdoor attacks 
 | DBA                         | Xie et al., **ICLR'20** [52]            |
 | Neurotoxin                  | Zhang et al., **ICML'22** [18]          |
 | A3FL                        | Zhang et al., **NeurIPS'23** [15]       |
-| IBA                         | Nguyen et al., **NeurIPS'23** [16]      |
+| IBA                        | Nguyen et al., **NeurIPS'23** [16]      |
+| LayerPoison                 | Zhuang et al., **[ICLR'24]** [41]    |
+| LayerFlip                   | Zhuang et al., **[ICLR'24]** [41]    |
 
 ### BadNets
 
@@ -34,3 +36,11 @@ This folder provides implementations of established *targeted* backdoor attacks 
 ### IBA
 
 **IBA (Irreversible Backdoor Attack)** learns a lightweight trigger generator that produces input-dependent perturbations for poisoned samples. During the attack window, the generator is optimized against the current model, and the resulting sample-specific triggers are used for local backdoor training. This allows the attack to employ adaptive triggers rather than a single fixed perturbation.
+
+### LayerPoison
+
+**LayerPoison (Layer-wise Poisoning Attack)** identifies the subset of model layers that are most critical to maintaining the backdoor using Layer Substitution Analysis (LSA). The attacker ranks layers according to their contribution to backdoor success and incrementally constructs a critical layer set $L^*$. The exposed update selectively pulls these layers toward the backdoored model while leaving the remaining layers close to an estimate of the benign population model. This concentrates the malicious update on backdoor-critical layers while reducing unnecessary changes to other parameters.
+
+### LayerFlip
+
+**LayerFlip (Layer-wise Flipping Attack)** reuses the backdoor-critical layer set $L^*$ identified by LSA and targets defenses based on parameter-wise sign agreement. The attacker reverses the update direction on the selected layers before submission. If the defense subsequently reverses updates that disagree with the majority direction, this operation can restore the intended malicious update rather than suppressing it.
