@@ -22,7 +22,7 @@
 
 ## 1. Overview
 
-BackDFL provides a unified experimental framework for benchmarking backdoor attacks and defenses under configurable CFL and DFL settings.
+BackDFL provides a unified experimental framework for benchmarking backdoor attacks and defenses under configurable *Centralized* and *Decentralized* FL settings.
 
 The framework combines:
 
