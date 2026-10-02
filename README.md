@@ -2,7 +2,7 @@
 
 
 <p align="center">
-  <b>BackDFL</b> is a modular, extensible, and configuration-driven framework for evaluating backdoor attacks and defenses in Centralized Federated Learning (CFL) and Decentralized Federated Learning (DFL).
+  <b>BackDFL</b> is a modular, extensible, and configuration-driven framework for evaluating backdoor attacks and defenses in Decentralized Federated Learning (DFL).
 </p>
 
 
