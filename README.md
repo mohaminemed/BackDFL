@@ -355,14 +355,14 @@ BackDFL/
 If you use **BackDFL** in your research, please cite:
 
 ```bibtex
-@misc{bouchiha2026backdflunifiedbenchmarkbackdoor,
-      title={BackDFL: A Unified Benchmark for Backdoor Attacks and Defenses in Decentralized Federated Learning},
-      author={Mouhamed Amine Bouchiha and Gregory Blanc and Yufei Han},
-      year={2026},
-      eprint={2608.21137},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2608.21137}
+@inproceedings{bouchiha2026backdflunifiedbenchmarkbackdoor,
+  title={BackDFL: A Unified Benchmark for Backdoor Attacks and Defenses in Decentralized Federated Learning},
+  author={Mouhamed Amine Bouchiha and Gregory Blanc and Yufei Han},
+  year={2026},
+  booktitle={European Symposium on Research in Computer Security Workshops - ANUBIS},
+  url={https://arxiv.org/abs/2608.21137},
+  year={2026},
+  organization={Springer}
 }
 ```
 
