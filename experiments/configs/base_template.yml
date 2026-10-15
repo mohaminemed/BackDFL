@@ -25,12 +25,12 @@ net_churn_rho: 0.0
 
 # --- Checkpointing ---------------------------------------------------------
 # Pre-trained model path
-pretrained_path: experiments/models/none_none_nslkdd_decentralized_30_non_iid.pth 
+# pretrained_path: experiments/models/none_none_nslkdd_decentralized_30_non_iid.pth 
                  #experiments/models/none_none_cifar100_centralized_500.pth
                  #experiments/models/none_none_gtsrb_decentralized_30_non_iid.pth 
                  #experiments/models/none_none_cifar10_decentralized_30_non_iid.pth 
                  #experiments/models/none_none_nslkdd_decentralized_30_non_iid.pth
-start_round: 31
+# start_round: 31
 save_model: true
 save_model_path: "experiments/models/{attack}_{defense}_{dataset}_{flow}.pth"
 save_model_rounds: [30]
@@ -41,15 +41,12 @@ save_statistics: false
 statistic_analysis_path: "experiments/statistics/{attack}_{defense}_{dataset}_{flow}.pkl"
 statistic_analysis_rounds: 35
 
-# Analysis server dump directory for SAGA (if used)
-saga_inspect_dump_dir: "experiments/statistics/iid/seed_35/{attack}_{dataset}"
-results_dir: "experiments/statistics/iid/seed_35"
-saga_phase_bounds: [35, 46, 51]
+
 
 
 # --- Training Attack Parameters --------------------------------------------
 attack: "{attack}"                # none | badnets | scaling | neurotoxin | a3fl | dba | iba
-num_malicious: 0
+num_malicious: 3
 malicious_strategy: "random"      # random | first (first = clustered)
 target_class: 0                   # 1 for HAR; 0: "normal" for NSLKDD and UNSW-NB15; 7: "speed limit" for GTSRB; 7: for other CV datasets
                                   # if the target class is common in the clean data, the ASR may be high
@@ -152,7 +149,7 @@ topology:
                                   # watts_strogatz | barabasi_albert |
                                   # random_regular | random_regular_nx | custom
     n: 20                         # number of nodes (overrides num_clients if provided)
-    k: 20                          # target degree (best-effort)
+    k: 7                          # target degree (best-effort)
     seed: 35
 
     # Type-specific parameters
