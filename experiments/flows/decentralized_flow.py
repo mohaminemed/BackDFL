@@ -247,6 +247,11 @@ def run_decentralized_flow(env, config, logger):
         # Sample active clients for this round
         client_ids = [client.id for client in clients if client.__class__.__name__ == 'BenignClient']
         mal_client_ids = [client.id for client in clients if client.__class__.__name__ != 'BenignClient']
+
+        ## Add the malicious client IDs to the config for the analysis server
+        if 'saga_debug_attacker_ids' not in config:
+           config['saga_debug_attacker_ids'] = mal_client_ids
+           print(f"Added malicious client IDs to config for analysis: {mal_client_ids}")
      
         if net_churn_rho > 0:
            rng = random.Random(config.get("seed", 42) + current_round)
@@ -280,8 +285,7 @@ def run_decentralized_flow(env, config, logger):
             neighbor_updates = [c[1] for c in collected]
 
             if isinstance(client, AttackerAggregationMixin) and current_round >= config.get('attack_start_round', 0):
-                try:
-                    
+                try:     
                     client.aggregate_from_neighbors_attacker(neighbor_updates, config=config, prev_global_params_per_client=prev_model_params_per_client, round_idx=current_round)
                 except AttributeError:
                     client.aggregate_from_neighbors(collected, defense_type='none', config=None)

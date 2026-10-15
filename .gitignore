@@ -12,8 +12,14 @@ experiments/models/
 experiments/logs/
 experiments/outputs/
 experiments/statistics/
-experiments/results/  
+experiments/results/ 
+src/defenses/analysis.py 
 ploting/  
 plots/
+analysis
+configs
+logs
+experiments/diagnosis
+run_seeds.sh
 
 ./gitignore

@@ -10,23 +10,28 @@ experiment_name: "{attack}_{defense}_{dataset}_{flow}"
 flow: "{flow}"                    # centralized | decentralized
 dataset: "{dataset}"
 num_clients: 20
-num_parallel_clients: 10          # >1 = parallel training, 1 = serial training
+num_parallel_clients: 10         # >1 = parallel training, 1 = serial training
 client_selection_fraction: 1.0    # centralized: fraction of clients; decentralized: all (num_clients)
-num_rounds: 100
+num_rounds: 50
 local_epochs: 5
 iid: "dirichlet"                        # iid | dirichlet  -- data partitioning strategy; if dirichlet, set dirichlet_alpha below
 dirichlet_alpha: 0.5
 batch_size: 32
 test_batch_size: 256
 lr: 0.01
-seed: 42
+seed: 35
 mix_ratio: 0.5
 net_churn_rho: 0.0
 
 # --- Checkpointing ---------------------------------------------------------
-#pretrained_path: experiments/models/none_none_nslkdd_decentralized_30_non_iid.pth
-#start_round: 31
-save_model: false
+# Pre-trained model path
+pretrained_path: experiments/models/none_none_nslkdd_decentralized_30_non_iid.pth 
+                 #experiments/models/none_none_cifar100_centralized_500.pth
+                 #experiments/models/none_none_gtsrb_decentralized_30_non_iid.pth 
+                 #experiments/models/none_none_cifar10_decentralized_30_non_iid.pth 
+                 #experiments/models/none_none_nslkdd_decentralized_30_non_iid.pth
+start_round: 31
+save_model: true
 save_model_path: "experiments/models/{attack}_{defense}_{dataset}_{flow}.pth"
 save_model_rounds: [30]
 
@@ -36,17 +41,22 @@ save_statistics: false
 statistic_analysis_path: "experiments/statistics/{attack}_{defense}_{dataset}_{flow}.pkl"
 statistic_analysis_rounds: 35
 
+# Analysis server dump directory for SAGA (if used)
+saga_inspect_dump_dir: "experiments/statistics/iid/seed_35/{attack}_{dataset}"
+results_dir: "experiments/statistics/iid/seed_35"
+saga_phase_bounds: [35, 46, 51]
+
 
 # --- Training Attack Parameters --------------------------------------------
 attack: "{attack}"                # none | badnets | scaling | neurotoxin | a3fl | dba | iba
-num_malicious: 3
+num_malicious: 0
 malicious_strategy: "random"      # random | first (first = clustered)
-target_class: 1                   # 1 for HAR; 0: "normal" for NSLKDD and UNSW-NB15; 7: "speed limit" for GTSRB; 7: for other CV datasets
+target_class: 0                   # 1 for HAR; 0: "normal" for NSLKDD and UNSW-NB15; 7: "speed limit" for GTSRB; 7: for other CV datasets
                                   # if the target class is common in the clean data, the ASR may be high
                                    
 
-attack_start_round: 31
-attack_end_round: 50              # scaling (one-shot): start == end; BadNets (whole training): -1
+attack_start_round: 35
+attack_end_round: 45              # scaling (one-shot): start == end; BadNets (whole training): -1
 attack_mode: "continuous"         # continuous | sporadic
 
 # --- Aggregation Attack Parameters -----------------------------------------
@@ -142,8 +152,8 @@ topology:
                                   # watts_strogatz | barabasi_albert |
                                   # random_regular | random_regular_nx | custom
     n: 20                         # number of nodes (overrides num_clients if provided)
-    k: 7                          # target degree (best-effort)
-    seed: 42
+    k: 20                          # target degree (best-effort)
+    seed: 35
 
     # Type-specific parameters
     params:

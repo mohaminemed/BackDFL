@@ -2,9 +2,11 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 import copy as cp
 
+from networkx import config
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+
 
 
 class BaseClient(ABC):
@@ -233,8 +235,13 @@ class BenignClient(BaseClient):
         # So we provide a held-out class-balanced validation set here for an optimistic evaluation.
         # This provide an upper bound on the performance of the defense.
         sentinel_config['sentinel_val_dataset'] = self.testloader.dataset if self.testloader else None
-        self.agg_server = SentinelServer(self.model, self.testloader, self.device, sentinel_config)   
-
+        self.agg_server = SentinelServer(self.model, self.testloader, self.device, sentinel_config) 
+      
+      elif defense_type == "saga":
+        from src.defenses.analysis import SAGAServer
+        saga_config = dict(config)  # shallow copy -- don't mutate the shared config object
+        saga_config['saga_val_dataset'] = self.testloader.dataset if self.testloader else None 
+        self.agg_server = SAGAServer(self.model, self.testloader, self.device, saga_config) 
       else:
         raise ValueError(f"Unknown defense type: {defense_type}")
 
@@ -270,7 +277,7 @@ class BenignClient(BaseClient):
           #print(f"[Client {self.id}] Processing update from neighbor {neigh} with {num_samples} samples.")
         
           if weights is not None and num_samples is not None:
-            if defense_type in ["argus", "sentinel"]:
+            if defense_type in ["sentinel", "r-sentinel", "saga"]:
               self.agg_server.receive_update(weights, num_samples, sender_id=neigh)
             else:
               self.agg_server.receive_update(weights, num_samples)
@@ -284,8 +291,11 @@ class BenignClient(BaseClient):
           return self.model.state_dict()
 
        # --- Aggregate recieved updates ---
-       if defense_type in ['balance', 'asg', 'aspp', 'abalance', "saga", "dfldual", "ubar", "sentinel", "argus"]:
+       if defense_type in ['balance', 'abalance', "dfldual", "ubar", "sentinel"]:
            agg_weights = self.agg_server.aggregate(current_round)  # returns a state_dict  
+       elif defense_type == "saga":
+           
+           agg_weights = self.agg_server.aggregate(self.id, current_round)  # returns a state_dict     
        else:    
            agg_weights = self.agg_server.aggregate()  # returns a state_dict
 

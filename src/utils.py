@@ -15,7 +15,7 @@ class ResultsLogger:
             experiment_name (str): A name for the experiment, used in the filename.
             config (dict): The experiment configuration (used for filename, not content).
         """
-        self.log_dir = "experiments/outputs"
+        self.log_dir = config.get('results_dir', 'experiments/outputs')
         os.makedirs(self.log_dir, exist_ok=True)
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
