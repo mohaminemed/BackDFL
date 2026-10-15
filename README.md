@@ -359,7 +359,7 @@ If you use **BackDFL** in your research, please cite:
   title={BackDFL: A Unified Benchmark for Backdoor Attacks and Defenses in Decentralized Federated Learning},
   author={Mouhamed Amine Bouchiha and Gregory Blanc and Yufei Han},
   year={2026},
-  booktitle={European Symposium on Research in Computer Security Workshops - ANUBIS},
+  booktitle={European Symposium on Research in Computer Security Workshops (ANUBIS - ESORICS)},
   url={https://arxiv.org/abs/2608.21137},
   year={2026},
   organization={Springer}
