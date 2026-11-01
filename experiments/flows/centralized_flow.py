@@ -14,7 +14,7 @@ from src.defenses.spp import SPPServer
 from src.defenses.mmad import MultiMetricsServer
 
 
-from .flow_utils import evaluate_model_accuracy, evaluate_asr
+from .flow_utils import evaluate_model_accuracy, evaluate_asr, recreate_asr_test_loader
 
 def _client_worker(args):
     """
@@ -49,6 +49,7 @@ def run_centralized_flow(env, config, logger):
     clients = env['clients']
     test_loader = env['test_loader']
     backdoor_loader = env.get('backdoor_loader')
+    asr_attacker_id = None  # cache key: which client's trigger this loader is bound to
     device = config.get('device', torch.device('cpu'))
 
     # create server with chosen defense
@@ -124,10 +125,22 @@ def run_centralized_flow(env, config, logger):
             if updated_trigger_state is None and trigger_state is not None:
                 updated_trigger_state = trigger_state
 
-        # handle trigger state for global eval if any (your original code did this)
-        if updated_trigger_state is not None:
-            # best-effort: if IBA or A3FL adjust backdoor_loader accordingly
-            pass
+        # handle trigger state for global eval if any (e.g., IBA or A3FL)
+        attacker = next((c for c in clients if c.__class__.__name__ in ['A3FLClient', 'IBAClient']), None)
+        if attacker and (backdoor_loader is None or asr_attacker_id != attacker.id):    
+                # Build ONCE per attacker identity, not every round.
+                # trigger.apply is read lazily at __getitem__, so later
+                # updates to trigger.pattern / trigger.generator are
+                # picked up automatically without rebuilding.
+                backdoor_loader = recreate_asr_test_loader(
+                                    env['test_loader'], attacker.trigger, config.get('target_class', 0),
+                                    config.get('test_batch_size', 256), seed=config.get('seed', 42),
+                                    num_workers=config.get('asr_num_workers', 0),  # see note below
+                                    pin_memory=True
+                )
+                asr_attacker_id = attacker.id
+                env['backdoor_loader'] = backdoor_loader
+            
         if defense_type in ['balance', 'asg', 'aspp', 'saga']:
             server.aggregate(current_round)
         else:
