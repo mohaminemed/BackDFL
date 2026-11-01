@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: ./run_experiment.sh <attack> <defense> <dataset> <flow>
-# Example: ./run_experiment.sh iba saga gtsrb decentralized
+# Example: ./run_experiment.sh iba flame gtsrb decentralized
 #
 # Optional environment overrides (used by run_seeds.sh):
 #   CONFIG_PATH : config file to use instead of experiments/configs/base_template.yml

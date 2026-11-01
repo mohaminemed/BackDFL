@@ -26,8 +26,8 @@ class IBAClient(AttackerAggregationMixin, BenignClient):
         target_class: int,
         attack_start_round: int = 1,
         attack_end_round: int = -1,
-        poison_fraction: float = 0.0,
-        malicious_epochs: int = 1,
+        poison_fraction: float = 0.25,
+        malicious_epochs: int = 5,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -106,5 +106,50 @@ class IBAClient(AttackerAggregationMixin, BenignClient):
       # Return the state_dict attacker will expose
       #return self.model.state_dict()
 
+class IBAGeneratorOnlyClient(IBAClient):
+    """
+    Control for IBA: the U-Net trigger generator is optimized against the current model exactly as in
+    IBAClient, but the classifier is trained on CLEAN local data only (no poisoned samples, no target label).
+    Any ASR measured with this trigger is therefore the transfer / "adversarial" baseline of the generator,
+    not an injected backdoor.
+    """
+    def __init__(self, *args, generator_after_training: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        # False: generator optimized on the model received at the start of the round (same order as IBAClient)
+        # True : generator optimized on the model I am about to send (trigger tuned to the exposed weights)
+        self.generator_after_training = generator_after_training
 
-    
+    def _train_generator(self):
+        full_clean_loader = DataLoader(
+            self.trainloader.dataset,
+            batch_size=self.trainloader.batch_size,
+            shuffle=True,
+        )
+        try:
+            self.trigger.train_generator(
+                classifier_model=self.model,
+                dataloader=full_clean_loader,
+                target_class=self.target_class,
+            )
+        finally:
+            del full_clean_loader
+
+    def local_train(self, epochs: int, round_idx: int, **kwargs) -> Dict[str, Any]:
+        if not (self.attack_start_round <= round_idx <= self.attack_end_round):
+            return super(IBAClient, self).local_train(epochs, round_idx)
+        try:
+            print(f"\n--- IBA-GenOnly Client [{self.get_id()}] round {round_idx}: "
+                  f"generator optimized, NO poisoning ---")
+            if not self.generator_after_training:
+                self._train_generator()
+
+            # clean training with the same number of epochs as a benign client
+            result = super(IBAClient, self).local_train(epochs, round_idx)
+
+            if self.generator_after_training:
+                self._train_generator()
+            return result
+        finally:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            print(f"IBAGeneratorOnlyClient [{self.get_id()}] finished, GPU cache cleared.")

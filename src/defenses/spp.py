@@ -276,6 +276,7 @@ class SPPServer(FedAvgAggregator):
             if accepted:
                 selected_indices.append(idx)
 
+        self.report_selection(selected_indices)
         if len(selected_indices) == 0:
               # still no accepted clients, skip aggregation
               print("SPPServer: no clients passed SPP strict check. Skipping aggregation this round.")

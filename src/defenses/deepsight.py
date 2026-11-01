@@ -50,6 +50,7 @@ class DeepSightServer(FedAvgAggregator):
                 print(f"Filtering out clients at indices: {anomalous_clients_indices}")
 
             benign_indices = [i for i, _ in enumerate(self.received_params) if i not in anomalous_clients_indices]
+            self.report_selection(benign_indices)
             if not benign_indices:
                 print("Warning: Deepsight filtered out all clients. Global model will not be updated.")
                 self.received_params.clear(); self.received_lens.clear()

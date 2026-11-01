@@ -11,10 +11,12 @@ class IBATrigger(BaseTrigger):
     Implements the generative trigger from "IBA" (Irreversible Backdoor Attacks),
     aligned with the official repository.
 
-    This trigger uses a U-Net model to generate an input-specific perturbation.
+    This trigger uses a U-Net model to generate an input-specific perturbation controlled by alpha.
     The generator is trained with a combined loss to be both effective and stealthy.
+    Larger alpha values result in stronger ASR floor.
+
     """
-    def __init__(self, unet_model: UNet, trigger_epochs: int = 10, alpha: float = 0.2, lambda_noise: float = 0.01):
+    def __init__(self, unet_model: UNet, trigger_epochs: int = 5, alpha: float = 0.2, lambda_noise: float = 0.01):
         """
         Initializes the IBA generative trigger.
 
@@ -56,7 +58,7 @@ class IBATrigger(BaseTrigger):
         optimizer = optim.Adam(self.generator.parameters(), lr=learning_rate)
         loss_fn = nn.CrossEntropyLoss()
 
-        print(f"--- Training IBA Generator for {self.trigger_epochs} epochs ---")
+        print(f"--- Training IBA Generator for {self.trigger_epochs} epochs; learning rate: {learning_rate}; lambda_noise: {self.lambda_noise} ;  alpha: {self.alpha}  ---")
         for epoch in range(self.trigger_epochs):
             for inputs, _ in dataloader:
                 inputs = inputs.to(device)

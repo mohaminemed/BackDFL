@@ -419,6 +419,8 @@ class DFLDualServer(FedAvgAggregator):
             kpick = max(1, int(math.ceil(n / 2)))
             selected_final = order[:kpick].tolist()
 
+        self.report_selection(selected_final)
+
         # Compose selected states and use received_lens for possible weighting
         selected_states = [models[i] for i in selected_final]
         selected_lens = [self.received_lens[i] if i < len(self.received_lens) else 1 for i in selected_final]

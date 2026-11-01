@@ -68,6 +68,7 @@ class FlameServer(FedAvgAggregator):
 
         malicious_indices, benign_indices, euclidean_distances = self.detect_anomalies()
         
+        self.report_selection(benign_indices)
         print(f"Flame detected {len(malicious_indices)} anomalous clients.")
         if malicious_indices:
             print(f"Filtering out clients at indices: {malicious_indices} and accepting clients at indices: {benign_indices}")

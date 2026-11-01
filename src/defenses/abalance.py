@@ -157,6 +157,8 @@ class AdaptiveBalanceServer(FedAvgAggregator):
                 selected_indices = fallback_selected
                 print(f"[Fallback TOP-K] Selected updates: {selected_indices}")
 
+        self.report_selection(selected_indices)
+
         # Aggregate selected states
         selected_states = [self.received_params[i] for i in selected_indices]
         selected_lens = [self.received_lens[i] for i in selected_indices]

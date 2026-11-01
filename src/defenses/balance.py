@@ -162,9 +162,12 @@ class BalanceServer(FedAvgAggregator):
               ):
               selected_indices.append(idx)
 
+      self.report_selection(selected_indices)
+
       # If no one passes after median → fallback to fedavg         
       if self.variant == 'exp_decay' and len(selected_indices) == 0:
            print("[BALANCE] No clients accepted → fallback to Fedavg.")
+           self.last_selection = None  # FedAvg fallback accepts everyone
            return super().aggregate()
 
       # Keep only selected

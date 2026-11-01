@@ -208,6 +208,7 @@ class MultiMetricsServer(FedAvgAggregator):
             print('MultiMetricsServer: no clients kept, falling back to FedAvg')
             return super().aggregate()
 
+        self.report_selection(kept_idx)
         print(f'MultiMetricsServer kept indices: {kept_idx} (out of {K})')
 
         # aggregate selected clients with FedAvg weighting

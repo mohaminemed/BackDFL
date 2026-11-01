@@ -6,6 +6,7 @@ from networkx import config
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from ..timing_metrics import timing_logger
 
 
 
@@ -168,7 +169,7 @@ class BenignClient(BaseClient):
 
       config = config or {}
 
-      if defense_type in ["none", "badfl"]:
+      if defense_type in ["none"]:
         from src.fl.baseserver import FedAvgAggregator
         self.agg_server = FedAvgAggregator(self.model, self.testloader, self.device)
       elif defense_type == "krum":
@@ -237,13 +238,21 @@ class BenignClient(BaseClient):
         sentinel_config['sentinel_val_dataset'] = self.testloader.dataset if self.testloader else None
         self.agg_server = SentinelServer(self.model, self.testloader, self.device, sentinel_config) 
       
-      elif defense_type == "saga":
-        from src.defenses.analysis import SAGAServer
-        saga_config = dict(config)  # shallow copy -- don't mutate the shared config object
-        saga_config['saga_val_dataset'] = self.testloader.dataset if self.testloader else None 
-        self.agg_server = SAGAServer(self.model, self.testloader, self.device, saga_config) 
       else:
         raise ValueError(f"Unknown defense type: {defense_type}")
+
+    def _log_detection(self, defense_type, config, current_round, sender_ids):
+       """TPR/FPR logging for defenses that report a selection (see defenses/detection_metrics.py)."""
+       selection = getattr(self.agg_server, "last_selection", None)
+       if defense_type == "none" or selection is None or config is None:
+          return
+       mal_ids = config.get("debug_attacker_ids", [])
+       if self.id in mal_ids:
+          return
+       attack_active = (config.get("attack", "none") != "none" and
+                        config.get("attack_start_round", 0) <= current_round <= config.get("attack_end_round", 10**9))
+       from ..defenses.detection_metrics import detection_logger
+       detection_logger.log_round(defense_type, self.id, current_round, sender_ids, selection, mal_ids, attack_active)
 
     def aggregate_from_neighbors(self, neighbor_params, defense_type="none", config=None, current_round=1):
        """
@@ -270,18 +279,21 @@ class BenignClient(BaseClient):
        
        # --- Feed recieved neighbor updates ---
        valid_updates = 0
-       for update in neighbor_updates:
-          neigh = neighbor_params[valid_updates][0]  # get neighbor id from the original list
+       fed_sender_ids = []  # sender ids in the same order as the server's received_params
+       self.agg_server.last_selection = None
+       for upd_idx, update in enumerate(neighbor_updates):
+          neigh = neighbor_params[upd_idx][0]  # get neighbor id from the original list
           weights, num_samples, _, _ = update  # 4-tuple
 
           #print(f"[Client {self.id}] Processing update from neighbor {neigh} with {num_samples} samples.")
         
           if weights is not None and num_samples is not None:
-            if defense_type in ["sentinel", "r-sentinel", "saga"]:
+            if defense_type in ["sentinel", "r-sentinel"]:
               self.agg_server.receive_update(weights, num_samples, sender_id=neigh)
             else:
               self.agg_server.receive_update(weights, num_samples)
         
+            fed_sender_ids.append(neigh)
             valid_updates += 1
 
                 
@@ -291,13 +303,13 @@ class BenignClient(BaseClient):
           return self.model.state_dict()
 
        # --- Aggregate recieved updates ---
-       if defense_type in ['balance', 'abalance', "dfldual", "ubar", "sentinel"]:
-           agg_weights = self.agg_server.aggregate(current_round)  # returns a state_dict  
-       elif defense_type == "saga":
-           
-           agg_weights = self.agg_server.aggregate(self.id, current_round)  # returns a state_dict     
-       else:    
-           agg_weights = self.agg_server.aggregate()  # returns a state_dict
+       with timing_logger.measure("defense_agg"):
+         if defense_type in ['balance', 'abalance', "dfldual", "ubar", "sentinel"]:
+             agg_weights = self.agg_server.aggregate(current_round)  # returns a state_dict  
+         else:    
+             agg_weights = self.agg_server.aggregate()  # returns a state_dict
+
+       self._log_detection(defense_type, config, current_round, fed_sender_ids)
 
        for k in agg_weights.keys():
            agg_weights[k] = agg_weights[k].to(self.device)

@@ -41,6 +41,7 @@ from src.attacks.neurotoxin_client import NeurotoxinClient
 from src.attacks.a3fl_client import A3FLClient
 from src.attacks.dba_client import DBAClient
 from src.attacks.iba_client import IBAClient
+from src.attacks.iba_client import IBAGeneratorOnlyClient
 from src.attacks.layercritical_client import LPClient
 from src.attacks.layercritical_client import LFClient
 
@@ -312,6 +313,12 @@ def build_clients(client_loaders: Dict[int, object],
                                    attack_end_round=config.get('attack_end_round', -1),
                                    poison_fraction=config.get('poisoning_rate', 0.1),
                                    malicious_epochs=config.get('malicious_epochs', 10))
+            elif attack_type == 'iba_genonly':
+                client = IBAGeneratorOnlyClient(**base_kwargs, **malicious_kwargs, trigger=trigger,
+                                               attack_start_round=config.get('attack_start_round', 0),
+                                               attack_end_round=config.get('attack_end_round', -1),
+                                               poison_fraction=config.get('poisoning_rate', 0.1),
+                                               malicious_epochs=config.get('malicious_epochs', 10))    
 
             elif attack_type == 'layerpoison':
                 client = LPClient(**base_kwargs, **malicious_kwargs, trigger=trigger,
@@ -464,7 +471,7 @@ def prepare_environment(config):
         trigger_pos = (image_size[0] - 4, image_size[1] - 4)
         if attack == 'a3fl':
             trigger = A3FLTrigger(
-                    position=trigger_pos, size=(3, 3),
+                    position=trigger_pos, size=(5, 5),
                     in_channels=in_channels, image_size=image_size,
                 trigger_epochs=config.get('trigger_epochs', 5),
                 trigger_lr=config.get('trigger_lr', 0.01)
