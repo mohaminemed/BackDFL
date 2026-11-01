@@ -29,6 +29,12 @@ class FedAvgAggregator(BaseServer):
         self.testloader = testloader  # keep reference (no deepcopy)
         self.received_params: List[Dict[str, torch.Tensor]] = []
         self.received_lens: List[int] = []
+        # positions (in received_params) accepted by the last aggregate(); read by detection metrics
+        self.last_selection: Optional[List[int]] = None
+
+    def report_selection(self, accepted_positions) -> None:
+        """Defenses call this with the positions of the updates they kept (others = rejected)."""
+        self.last_selection = sorted(int(i) for i in accepted_positions)
 
     def load_testdata(self, testloader):
         self.testloader = testloader
@@ -65,6 +71,8 @@ class FedAvgAggregator(BaseServer):
 
     def aggregate(self) -> Dict[str, torch.Tensor]:
         assert len(self.received_params) == len(self.received_lens) and len(self.received_params) > 0
+        if self.last_selection is None:  # plain FedAvg (or defense fallback) accepts everyone
+            self.report_selection(range(len(self.received_params)))
         total_samples = sum(self.received_lens)
 
         averaged = {}

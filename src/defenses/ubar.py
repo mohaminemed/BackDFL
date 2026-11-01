@@ -136,6 +136,8 @@ class UBARServer(FedAvgAggregator):
             best_i, _ = min(candidate_losses, key=lambda pair: pair[1])
             selected_indices = [best_i]
 
+        self.report_selection(selected_indices)
+
         # -- Average selected candidates --
         selected_states = [self.received_params[i] for i in selected_indices]
         r_state: Dict[str, torch.Tensor] = {}

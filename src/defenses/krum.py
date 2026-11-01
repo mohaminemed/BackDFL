@@ -14,10 +14,16 @@ class MKrumServer(FedAvgAggregator):
         super().__init__(model, testloader, device)
         
         self.config = config if config is not None else {}
-        self.num_byzantine = self.config.get('krum_f', 0)
-        self.num_to_select = self.config.get('krum_m', 1)
+        # If krum_f_frac is set, f and m are derived per round from the number of received updates
+        # (adaptive to topology); otherwise the fixed krum_f / krum_m are used.
+        self.f_frac = self.config.get('krum_f_frac', None)
+        self.num_byzantine = self.config.get('krum_f', 2)
+        self.num_to_select = self.config.get('krum_m', 3)
 
-        print(f"Initialized MKrumServer to tolerate f={self.num_byzantine} Byzantine clients and select m={self.num_to_select} for aggregation.")
+        if self.f_frac is not None:
+            print(f"Initialized MKrumServer with adaptive f=floor({self.f_frac}*n), m=n-f-2.")
+        else:
+            print(f"Initialized MKrumServer to tolerate f={self.num_byzantine} Byzantine clients and select m={self.num_to_select} for aggregation.")
 
     def aggregate(self) -> Dict[str, torch.Tensor]:
         """
@@ -28,6 +34,11 @@ class MKrumServer(FedAvgAggregator):
         if num_updates == 0:
             print("Warning: No updates to aggregate.")
             return self.get_params()
+
+        if self.f_frac is not None:
+            # Cap f so that n > 2f + 2 still holds, then select the maximum m = n - f - 2
+            self.num_byzantine = min(int(self.f_frac * num_updates), max(0, (num_updates - 3) // 2))
+            self.num_to_select = max(1, num_updates - self.num_byzantine - 2)
 
         # M-Krum requires n > 2f + 2 to provide guarantees
         if num_updates <= 2 * self.num_byzantine + 2:
@@ -65,6 +76,7 @@ class MKrumServer(FedAvgAggregator):
         sorted_indices = np.argsort(scores)
         selected_indices = sorted_indices[:self.num_to_select]
         
+        self.report_selection(selected_indices.tolist())
         print(f"Krum selected clients at indices: {selected_indices.tolist()}")
 
         # 5. Aggregate only the selected clients using standard FedAvg logic

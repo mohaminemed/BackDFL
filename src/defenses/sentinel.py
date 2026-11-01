@@ -268,6 +268,8 @@ class SentinelServer(FedAvgAggregator):
             (sid, recv_state) for sid, recv_state, sim in similarities if sim >= effective_tau_s
         ]
 
+        surviving_pos = [pos for pos, (_, _, sim) in enumerate(similarities) if sim >= effective_tau_s]
+
         if not surviving:
             print("[SENTINEL] All neighbors filtered by similarity -> fallback to FedAvg.")
             result = super().aggregate()
@@ -276,12 +278,15 @@ class SentinelServer(FedAvgAggregator):
 
         # -- Stage 2: bootstrap validation --> per-neighbor weight --
         weighted: List[Tuple[Dict[str, torch.Tensor], float]] = [(own_state, 1.0)]  # local model, w_i = 1
-        for sid, recv_state in surviving:
+        accepted_pos: List[int] = []
+        for pos, (sid, recv_state) in zip(surviving_pos, surviving):
             loss = self._compute_bootstrap_loss(recv_state, bootstrap_batch)
             self.loss_history.setdefault(sid, []).append(loss)
             w = self._map_loss_distance(self.own_loss_history, self.loss_history[sid])
             if w > 0.0:
                 weighted.append((recv_state, w))
+                accepted_pos.append(pos)
+        self.report_selection(accepted_pos)
 
         total_weight = sum(w for _, w in weighted)
         if total_weight <= 0.0:

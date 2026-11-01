@@ -13,7 +13,18 @@ from .triggers.a3fl import A3FLTrigger
 
 class A3FLClient(AttackerAggregationMixin, BenignClient):
     """
-    A3FL-style malicious client that attacks within a specified window.
+    A3FL malicious client that attacks within a specified window.
+
+    `skip_trigger_training`: set by the orchestrator (see
+    `_sync_a3fl_triggers` in the decentralized flow) to enforce a single
+    shared trigger across all compromised clients, as in the paper ("the
+    backdoor trigger is optimized on one randomly selected compromised
+    client, and all compromised clients use this same trigger"). When True,
+    this client skips Phase 1 (trigger optimization) entirely and poisons
+    with whatever pattern is currently loaded in `self.trigger.pattern`
+    (expected to have been overwritten with the round's shared/leader
+    pattern before `local_train` is called). Defaults to False so a client
+    used outside that orchestration still trains its own trigger as before.
     """
     def __init__(
         self,
@@ -24,8 +35,9 @@ class A3FLClient(AttackerAggregationMixin, BenignClient):
         # --- MODIFICATION: Add attack window parameters ---
         attack_start_round: int = 1,
         attack_end_round: int = -1, # -1 means attack until the end
-        poison_fraction: float = 0.1,
-        malicious_epochs: int = 10,
+        poison_fraction: float = 0.25,
+        malicious_epochs: int = 5,
+        trigger_warmup_rounds: int = 10,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -41,6 +53,10 @@ class A3FLClient(AttackerAggregationMixin, BenignClient):
         self.attack_end_round = attack_end_round if attack_end_round > 0 else float('inf')
         self.poison_fraction = poison_fraction
         self.malicious_epochs = malicious_epochs
+        # See class docstring. Default False: train your own trigger unless
+        # an orchestrator explicitly designates this client a non-leader.
+        self.skip_trigger_training = False
+        self.trigger_warmup_rounds = int(trigger_warmup_rounds)
 
     def _build_trigger_dataloader(self) -> DataLoader:
         """Samples a small subset of local data for trigger optimization."""
@@ -57,21 +73,42 @@ class A3FLClient(AttackerAggregationMixin, BenignClient):
         Performs the A3FL attack only if the current round is within the attack window.
         Otherwise, behaves like a benign client.
         """
-        # --- MODIFICATION: Check if the attack should be active ---
-        if not (self.attack_start_round <= round_idx <= self.attack_end_round):
+
+        in_attack = self.attack_start_round <= round_idx <= self.attack_end_round
+        in_warmup = (self.attack_start_round - self.trigger_warmup_rounds
+                 <= round_idx < self.attack_start_round)
+
+        if not (in_attack or in_warmup):
             print(f"Client [{self.get_id()}]: Behaving benignly in round {round_idx} (outside attack window).")
             return super().local_train(epochs, round_idx)
+       
+        # --- Phase 1: Optimize the Trigger (skipped for non-leader attackers) ---
+        if self.skip_trigger_training:
+            print(f"\n--- A3FL Client [{self.get_id()}] skipping trigger optimization for round "
+                  f"{round_idx} (using shared/leader trigger) ---")
+            self._prev_pattern = self.trigger.pattern.clone()
 
-        # --- Phase 1: Optimize the Trigger ---
-        print(f"\n--- A3FL Client [{self.get_id()}] optimizing trigger for round {round_idx} ---")
-        trigger_dl = self._build_trigger_dataloader()
-        self.trigger.train_trigger(
-            classifier_model=self.model,
-            dataloader=trigger_dl,
-            target_class=self.target_class
-        )
+        else:
+            print(f"\n--- A3FL Client [{self.get_id()}] optimizing trigger for round {round_idx} ---")
+            trigger_dl = self._build_trigger_dataloader()
+            old_pattern = self.trigger.pattern.clone()
+            self.trigger.train_trigger(
+                classifier_model=self.model,
+                dataloader=trigger_dl,
+                target_class=self.target_class
+            )
 
-        # --- Phase 2: Naive Training with the Optimized Trigger ---
+            drift = (self.trigger.pattern - old_pattern).abs().max().item()
+            print(f"[A3FL {self.get_id()}] round {round_idx} pattern Linf drift {drift:.3f}")
+            print(f"[A3FL {self.get_id()}] round {round_idx} pattern Linf norm {self.trigger.pattern.abs().max().item():.3f}")
+            self._prev_pattern = old_pattern   # for the asr_old check below
+
+        # --- Warm-up: trigger optimized, but no poisoning ---
+        if in_warmup:
+            print(f"Client [{self.get_id()}]: Warm-up phase in round {round_idx} (trigger optimized, but no poisoning).")
+            return super().local_train(epochs, round_idx)   # benign update    
+
+        # --- Phase 2: Naive Training with the (possibly shared) Trigger ---
         poisoned_dataset = BackdoorDataset(
             original_dataset=self.trainloader.dataset,
             trigger_fn=self.trigger.apply,
@@ -96,10 +133,3 @@ class A3FLClient(AttackerAggregationMixin, BenignClient):
             self.trainloader = original_loader
 
         return result
-    
-
-
-      # Return the state_dict attacker will expose
-      #return self.model.state_dict()
-
-

@@ -58,6 +58,7 @@ target_class: 1                   # 1 for HAR; 0: "normal" for NSLKDD and UNSW-N
 
 attack_start_round: 31
 attack_end_round: 45              # scaling (one-shot): start == end; BadNets (whole training): -1
+contamination_threshold: 0.5      # a benign client counts as contaminated when its ASR exceeds this (csv: contaminated_frac)
 attack_mode: "continuous"         # continuous | sporadic
 
 # --- Aggregation Attack Parameters -----------------------------------------
@@ -103,6 +104,8 @@ flame_lambda: 0.00001             # 0.001 hurts convergence; 0.0005 hurts on CIF
                                   # small values give higher ASR but better ACC on other datasets
 flame_eta: 1.0
 
+krum_f_frac: 0.3                  # adaptive: f = floor(0.3*n), m = n-f-2 with n = received updates per round
+                                  # (remove it to use the fixed krum_f / krum_m below)
 krum_f: 2
 krum_m: 3                         # 3 for the 20-client case; adjust for larger numbers of clients
 
